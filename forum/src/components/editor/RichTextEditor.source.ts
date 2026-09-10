@@ -121,13 +121,17 @@ export function useRichTextEditorSource({
     mirror.style.cssText = 'position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;';
     mirror.setAttribute('aria-hidden', 'true');
     document.body.appendChild(mirror);
+    let contentWidth: number | null = null;
     const updateLayout = () => {
       resizeSourceTextarea();
+      if (contentWidth === null) return;
       const style = window.getComputedStyle(textarea);
-      const contentWidth = textarea.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       if (htmlHighlightRef.current) {
-        htmlHighlightRef.current.style.width = `${textarea.clientWidth}px`;
+        // clientWidth rounds to whole pixels, which can move a character to a
+        // different wrapped line. Keep the textarea's fractional content width.
+        htmlHighlightRef.current.style.width = `${contentWidth + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)}px`;
         htmlHighlightRef.current.scrollTop = textarea.scrollTop;
+        htmlHighlightRef.current.scrollLeft = textarea.scrollLeft;
       }
       if (shouldShowSourceLineNumbers && sourceLineNumbersRef.current) {
         for (const property of [
@@ -155,7 +159,11 @@ export function useRichTextEditorSource({
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(updateLayout);
     };
-    const observer = new ResizeObserver(scheduleLayout);
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries.find((entry) => entry.target === textarea);
+      if (entry) contentWidth = entry.contentRect.width;
+      scheduleLayout();
+    });
     observer.observe(textarea);
     window.addEventListener('resize', scheduleLayout);
     document.fonts.addEventListener('loadingdone', scheduleLayout);

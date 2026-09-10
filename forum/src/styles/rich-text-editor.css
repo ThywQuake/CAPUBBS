@@ -71,6 +71,11 @@
     overflow-wrap: inherit;
   }
 
+  /* Preserve the final empty line so both layers have the same scroll range. */
+  .capubbs-code-layer code::after {
+    content: '\200b';
+  }
+
   .capubbs-code-layer {
     height: 100%;
     margin: 0;
