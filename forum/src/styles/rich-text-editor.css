@@ -38,12 +38,37 @@
   .capubbs-code-editor {
     font-family: "SFMono-Regular", "Cascadia Code", "Fira Code", Consolas, "Liberation Mono", monospace;
     font-size: 0.8125rem;
+    font-weight: 400;
+    font-style: normal;
+    font-variant: normal;
+    font-variant-ligatures: none;
+    font-feature-settings: normal;
+    font-variation-settings: normal;
     line-height: 1.65;
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-align: left;
+    text-indent: 0;
+    text-transform: none;
     padding: 0.75rem;
     tab-size: 2;
     white-space: pre-wrap;
     word-break: normal;
     overflow-wrap: anywhere;
+  }
+
+  /* The visible code must use the textarea's metrics, including inside tokens. */
+  .capubbs-code-layer code,
+  .capubbs-code-layer span {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    word-spacing: inherit;
+    tab-size: inherit;
+    white-space: inherit;
+    word-break: inherit;
+    overflow-wrap: inherit;
   }
 
   .capubbs-code-layer {
