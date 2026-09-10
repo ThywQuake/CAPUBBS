@@ -1762,7 +1762,11 @@
     align-self: stretch;
     padding: 0 12px;
     background: var(--brand);
-    color: var(--brand-contrast);
+    color: white;
+  }
+
+  .dark .nested-reply-submit {
+    color: #0d1711;
   }
 
   .nested-reply-submit:disabled,
