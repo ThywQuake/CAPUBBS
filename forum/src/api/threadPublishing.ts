@@ -1,3 +1,5 @@
+import { normalizeMentionsForLegacyStorage } from '../utils/mentionStorage.ts';
+
 const THREAD_API_URL = import.meta.env?.VITE_API_URL?.trim() || '/api/api.php';
 const DEFAULT_PUBLISH_TIMEOUT_MS = 15_000;
 
@@ -56,7 +58,7 @@ export async function publishThreadContent(
     attachs: request.attachments,
     bid: String(request.bid),
     sig: String(request.signatureIndex),
-    text: request.text,
+    text: normalizeMentionsForLegacyStorage(request.text),
     title: request.title,
     ...(request.tid ? { tid: String(request.tid) } : {}),
     type: 'web',
