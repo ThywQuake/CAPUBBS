@@ -183,6 +183,7 @@ function buildLoadedConversation(user: string, messages: DirectChatMessage[]): D
 function getSystemMessageAction(type: string) {
   switch (type) {
     case 'at':
+      return '@了你';
     case 'reply':
       return '回复了你的帖子';
     case 'quote':
@@ -200,6 +201,7 @@ function getSystemMessageExcerpt(type: string, sender: string, subject: string) 
   const context = subject ? `：${subject}` : '';
   switch (type) {
     case 'at':
+      return `${sender} @了你${context}`;
     case 'reply':
       return `${sender} 回复了你的帖子${context}`;
     case 'quote':

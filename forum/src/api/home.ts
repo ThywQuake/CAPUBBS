@@ -501,6 +501,8 @@ function excerptText(value: string) {
   document.querySelectorAll('script, style, blockquote, template, noscript, .capubbs-gallery')
     .forEach((element) => element.remove());
   return (document.body.textContent ?? '')
+    .replace(/\[at\]\s*/gi, '@')
+    .replace(/\[\/at\]/gi, '')
     .replace(/\[(?:\/?[a-z][^\]]*)\]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
