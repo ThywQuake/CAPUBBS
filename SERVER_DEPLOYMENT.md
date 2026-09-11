@@ -6,6 +6,26 @@
 
 本手册默认使用 Nginx、PHP-FPM 和 MySQL。若正式服务器使用 Apache，请实现与本文 Nginx 配置等价的静态文件、PHP、前端深链回退和敏感文件保护规则。
 
+## 2026-09-11 生产 Apache 全论坛 gzip 修复记录
+
+经用户授权，修改生产端 `/var/www/CAPUBBS/.htaccess`。原文件仅为 JSON 定义 `AddOutputFilterByType`，覆盖了上层 HTML、CSS、JS 压缩类型；现替换为以下完整规则，覆盖新旧论坛并保留 JSON 压缩：
+
+```apache
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml text/javascript application/javascript application/x-javascript application/ecmascript application/json application/xml application/rss+xml image/svg+xml
+</IfModule>
+```
+
+原文件备份在站点目录之外：`/home/capu/config-backups/CAPUBBS.htaccess.20260911T082523Z`。本次未修改 API、PHP 配置或重载 Apache；`.htaccess` 在后续请求中直接生效。
+
+验证结果：`apache2ctl configtest` 返回 `Syntax OK`，仍有此前已有的全局 `ServerName` 提示。服务器回环请求及公网请求均确认首页、JS、CSS 返回 HTTP 200 和 `Content-Encoding: gzip`，并包含 `Vary: Accept-Encoding`。回环请求的 gzip 解压内容与修改前逐字节一致：首页 554 → 353 字节，JS 422486 → 134042 字节，CSS 395898 → 59434 字节。携带旧论坛 Cookie 的首页在修改前后均为 HTTP 200，修改后启用 gzip。以上为命令行传输验证，不包含 UI 或全部业务功能验收。
+
+若需回撤，在生产端恢复备份并重新检查响应即可：
+
+```bash
+cp -p /home/capu/config-backups/CAPUBBS.htaccess.20260911T082523Z /var/www/CAPUBBS/.htaccess
+```
+
 ## 一、上线前必须确认的信息
 
 开始前，由发布负责人和服务器管理员共同确认并记录：
