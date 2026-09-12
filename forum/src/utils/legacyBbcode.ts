@@ -4,13 +4,19 @@ import { repairUnclosedLegacyBbcode } from './legacyBbcodeRepair';
 
 type LegacyBbcodeReplacement = [RegExp, (...matches: string[]) => string];
 
-const LEGACY_FONT_FALLBACKS: Record<string, string> = {
-  '仿宋': 'FangSong',
-  '黑体': 'SimHei',
-  '楷体': 'Kaiti',
-  '宋体': 'SimSun',
-  '幼圆': 'YouYuan',
+const LEGACY_FONT_FALLBACKS: Record<string, { alias: string; generic: string }> = {
+  '仿宋': { alias: 'FangSong', generic: 'serif' },
+  '黑体': { alias: 'SimHei', generic: 'sans-serif' },
+  '楷体': { alias: 'Kaiti', generic: 'serif' },
+  '宋体': { alias: 'SimSun', generic: 'serif' },
+  '幼圆': { alias: 'YouYuan', generic: 'sans-serif' },
+  '微软雅黑': { alias: '"Microsoft YaHei"', generic: 'sans-serif' },
 };
+
+const GENERIC_FONT_FAMILIES = new Set([
+  'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui',
+  'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'emoji', 'math', 'fangsong',
+]);
 
 export function translateLegacyBbcode(value: string) {
   const normalizedValue = normalizeUnclosedHeadings(value);
@@ -233,15 +239,25 @@ function normalizeLegacyFontFace(value: string) {
     .filter(Boolean);
   const existingNames = new Set(names.map((name) => stripFontNameQuotes(name).toLocaleLowerCase()));
   const normalizedNames: string[] = [];
+  let genericFallback: string | undefined;
 
   names.forEach((name) => {
     normalizedNames.push(name);
     const fallback = LEGACY_FONT_FALLBACKS[stripFontNameQuotes(name)];
-    if (fallback && !existingNames.has(fallback.toLocaleLowerCase())) {
-      normalizedNames.push(fallback);
-      existingNames.add(fallback.toLocaleLowerCase());
+    if (!fallback) return;
+    genericFallback ??= fallback.generic;
+    const aliasKey = stripFontNameQuotes(fallback.alias).toLocaleLowerCase();
+    if (!existingNames.has(aliasKey)) {
+      normalizedNames.push(fallback.alias);
+      existingNames.add(aliasKey);
     }
   });
+
+  // Respect an explicit generic family; otherwise use the first recognized
+  // Chinese font's category, after all of the author's named fonts.
+  if (genericFallback && !names.some((name) => GENERIC_FONT_FAMILIES.has(name.toLowerCase()))) {
+    normalizedNames.push(genericFallback);
+  }
 
   return normalizedNames.join(', ');
 }
