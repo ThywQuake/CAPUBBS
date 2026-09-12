@@ -18,6 +18,7 @@ export function translateLegacyBbcode(value: string) {
     !normalizedValue.includes('[')
     && !normalizedValue.includes('capubbs:quote ')
     && !/<font\b[^>]*\bface\s*=/i.test(normalizedValue)
+    && !/\bstyle\s*=/i.test(normalizedValue)
   ) {
     return normalizedValue;
   }
@@ -31,6 +32,18 @@ export function translateLegacyBbcode(value: string) {
   fragment.querySelectorAll('font[face]').forEach((element) => {
     const face = element.getAttribute('face');
     if (face) element.setAttribute('face', normalizeLegacyFontFace(face));
+  });
+
+  fragment.querySelectorAll<HTMLElement>('[style]').forEach((element) => {
+    const family = element.style.getPropertyValue('font-family');
+    if (!family) return;
+    const normalized = normalizeLegacyFontFace(family);
+    if (normalized === family) return;
+    element.style.setProperty(
+      'font-family',
+      normalized,
+      element.style.getPropertyPriority('font-family'),
+    );
   });
 
   // BBCode may begin in one text node and end in another when HTML elements
@@ -214,8 +227,8 @@ export function forumMarkupToPlainText(value: string) {
 }
 
 function normalizeLegacyFontFace(value: string) {
-  const names = value
-    .split(',')
+  // A quoted font name can itself contain commas.
+  const names = (value.match(/(?:[^,"']|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')+/g) ?? [])
     .map((name) => name.trim())
     .filter(Boolean);
   const existingNames = new Set(names.map((name) => stripFontNameQuotes(name).toLocaleLowerCase()));
