@@ -13,15 +13,30 @@
     document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}${cookieDomain ? '; domain=' + cookieDomain : ''}`;
   }
 
+  // A token left on any parent domain would log the user straight back in, so expire it on every level.
+  const labels = hostname.split('.');
+  const parentDomains = /^[\d.]+$|:/.test(hostname) ? [] : labels.slice(0, -1).map((_, index) => labels.slice(index).join('.'));
+
   function clearSession() {
     for (const name of ['token', 'capubbs-session-viewer']) {
       expire(name);
-      if (domain) expire(name, domain);
+      for (const cookieDomain of new Set([domain, ...parentDomains].filter(Boolean))) expire(name, cookieDomain);
     }
     try {
       localStorage.removeItem('capubbs-session-viewer');
       localStorage.removeItem('capubbs-session-viewer-refreshed-at');
     } catch (_) { /* Cookies remain the source of identity. */ }
+  }
+
+  // Logging out must also drop this session from the forum's saved accounts, or 切换账号 could reopen it.
+  function forgetSavedAccount() {
+    const cookie = document.cookie.split(';').map(item => item.trim()).find(item => item.startsWith('token='));
+    const token = cookie ? decodeURIComponent(cookie.slice(6)) : '';
+    try {
+      const accounts = JSON.parse(localStorage.getItem('capubbs-saved-accounts') || '[]');
+      if (!token || !Array.isArray(accounts)) return;
+      localStorage.setItem('capubbs-saved-accounts', JSON.stringify(accounts.filter(account => !account || account.token !== token)));
+    } catch (_) { /* Nothing saved, or storage unavailable. */ }
   }
 
   async function request(params) {
@@ -104,6 +119,7 @@
     if (!logout || busy) return;
     busy = true;
     logout.disabled = true;
+    forgetSavedAccount();
     try {
       await request({ ask: 'logout' });
       clearSession();
