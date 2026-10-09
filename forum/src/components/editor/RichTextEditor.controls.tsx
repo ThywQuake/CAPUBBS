@@ -86,6 +86,14 @@ export function RichTextEditorControls(props: Props) {
     toggleColorPicker, toggleRichFirstLineIndent,
   } = props;
   const toolbarTooltip = useToolbarTooltip();
+  const colorTriggerRef = useRef<HTMLButtonElement>(null);
+  const colorPopoverRef = useRef<HTMLDivElement>(null);
+  const colorPopoverPosition = useAnchoredPopover(
+    isColorPickerOpen && !isSourceMode,
+    colorTriggerRef,
+    colorPopoverRef,
+    toggleColorPicker,
+  );
   const ActiveAlignIcon = alignOptions.find((option) => activeRichCommands[option.value])?.icon ?? AlignLeft;
 
   const attachmentButton = onOpenAttachments ? (
@@ -232,17 +240,22 @@ export function RichTextEditorControls(props: Props) {
               <ToolbarDivider />
 
               <button
+                ref={colorTriggerRef}
                 type="button"
                 onMouseDown={(event) => {
                   handleToolbarMouseDown(event);
                   saveSelection();
                 }}
                 onClick={toggleColorPicker}
-                className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--control-radius)] text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white ${
-                  isColorPickerOpen ? 'bg-zinc-100 text-zinc-950 dark:bg-white/10 dark:text-white' : ''
+                className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--control-radius)] border text-[#174f38] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:text-white ${
+                  isColorPickerOpen
+                    ? 'border-[#174f38]/30 bg-[#174f38]/10 dark:border-emerald-200/30 dark:bg-emerald-200/15'
+                    : 'border-transparent hover:border-zinc-200 hover:bg-zinc-100 dark:hover:border-white/10 dark:hover:bg-white/[0.1]'
                 }`}
                 aria-label="文字颜色"
-                data-toolbar-tooltip="文字颜色"
+                aria-haspopup="dialog"
+                aria-expanded={isColorPickerOpen}
+                data-toolbar-tooltip={isColorPickerOpen ? undefined : '文字颜色'}
               >
                 <Palette size={14} />
                 <span
@@ -297,36 +310,55 @@ export function RichTextEditorControls(props: Props) {
           </div>
         ) : null}
 
-        {isColorPickerOpen && !isSourceMode ? (
-          <div className="capubbs-editor-color-panel flex flex-wrap items-start gap-3 border-b border-zinc-200/80 px-2 py-2 dark:border-white/10">
+        {isColorPickerOpen && !isSourceMode && colorPopoverPosition ? createPortal(
+          <div
+            ref={colorPopoverRef}
+            role="dialog"
+            aria-label="文字颜色"
+            className={`${toolbarPopoverClassName} capubbs-editor-color-panel grid gap-2 p-2`}
+            style={colorPopoverPosition}
+          >
             <HexColorPanel
               actionLabel="应用"
               ariaLabel="文字颜色"
               onChange={handleHexSourceChange}
-              onCommit={applyHexSourceColor}
+              onCommit={() => {
+                applyHexSourceColor();
+                toggleColorPicker();
+              }}
               onInteractionStart={saveSelection}
               value={hexSourceValue}
             />
             {recentTextColors.length > 0 ? (
-              <div className="grid gap-1 text-[length:var(--ui-font-size-md)] font-semibold text-zinc-500 dark:text-zinc-400">
+              <div className="grid gap-1.5 border-t border-zinc-200/80 pt-2 text-[length:var(--ui-font-size-sm)] font-semibold text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                 <span>最近使用</span>
-                <div className="flex h-7 items-center gap-1">
-                  {recentTextColors.map((recentColor) => (
-                    <button
-                      key={recentColor}
-                      type="button"
-                      aria-label={`使用最近颜色 ${recentColor}`}
-                      data-toolbar-tooltip={recentColor}
-                      onMouseDown={handleColorActionMouseDown}
-                      onClick={() => applyRichTextColor(recentColor)}
-                      className="h-6 w-6 rounded-[var(--control-radius)] border border-zinc-300 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:border-white/20"
-                      style={{ backgroundColor: recentColor }}
-                    />
-                  ))}
+                <div className="flex flex-wrap gap-1.5">
+                  {recentTextColors.map((recentColor) => {
+                    const isActive = recentColor === normalizeCssColor(selectedTextColor);
+                    return (
+                      <button
+                        key={recentColor}
+                        type="button"
+                        aria-label={`使用最近颜色 ${recentColor}`}
+                        aria-pressed={isActive}
+                        title={recentColor}
+                        onMouseDown={handleColorActionMouseDown}
+                        onClick={() => {
+                          applyRichTextColor(recentColor);
+                          toggleColorPicker();
+                        }}
+                        className={`h-[22px] w-[22px] rounded-[var(--control-radius)] border border-black/15 transition hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:border-white/20 ${
+                          isActive ? 'ring-2 ring-[#174f38] ring-offset-1 ring-offset-white dark:ring-emerald-200 dark:ring-offset-zinc-900' : ''
+                        }`}
+                        style={{ backgroundColor: recentColor }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             ) : null}
-          </div>
+          </div>,
+          document.body,
         ) : null}
 
         {popoverConfig ? (
@@ -463,6 +495,61 @@ const imageTextAlignOptions = [
   { value: 'bottom', label: '底端对齐' },
 ] as const;
 
+const toolbarPopoverClassName = 'fixed z-[1100] rounded-[var(--card-radius)] border border-zinc-200 bg-white shadow-lg dark:border-white/10 dark:bg-zinc-900';
+
+function useAnchoredPopover(
+  isOpen: boolean,
+  triggerRef: RefObject<HTMLElement | null>,
+  popoverRef: RefObject<HTMLElement | null>,
+  onClose: () => void,
+) {
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPosition(null);
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = popoverRef.current?.offsetWidth ?? 0;
+      const height = popoverRef.current?.offsetHeight ?? 0;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+      const fitsBelow = rect.bottom + 4 + height <= window.innerHeight - 8;
+      const top = fitsBelow || rect.top - 4 - height < 8 ? rect.bottom + 4 : rect.top - 4 - height;
+      setPosition({ left, top });
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
+      onCloseRef.current();
+    };
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape' && event.target !== triggerRef.current) onCloseRef.current();
+    };
+
+    updatePosition();
+    const frame = window.requestAnimationFrame(updatePosition);
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, triggerRef, popoverRef]);
+
+  return position;
+}
+
 type ToolbarMenuOption<T extends string> = {
   icon?: LucideIcon;
   label: string;
@@ -491,7 +578,6 @@ function ToolbarMenu<T extends string>({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -505,39 +591,7 @@ function ToolbarMenu<T extends string>({
     closeMenu();
   };
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const updatePosition = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const menuWidth = menuRef.current?.offsetWidth ?? 0;
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8));
-      setPosition({ left, top: rect.bottom + 4 });
-    };
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      closeMenu();
-    };
-    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape' && event.target !== triggerRef.current) closeMenu();
-    };
-
-    updatePosition();
-    const frame = window.requestAnimationFrame(updatePosition);
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('keydown', handleDocumentKeyDown);
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleDocumentKeyDown);
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
-    };
-  }, [isOpen]);
+  const position = useAnchoredPopover(isOpen, triggerRef, menuRef, closeMenu);
 
   const openMenu = () => {
     onOpen?.();
@@ -593,8 +647,8 @@ function ToolbarMenu<T extends string>({
           ref={menuRef}
           role="menu"
           aria-label={label}
-          className="fixed z-[1100] grid max-h-[min(20rem,calc(100vh-1rem))] min-w-[7.5rem] gap-px overflow-y-auto rounded-[var(--card-radius)] border border-zinc-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-900"
-          style={{ left: position.left, top: position.top }}
+          className={`${toolbarPopoverClassName} grid max-h-[min(20rem,calc(100vh-1rem))] min-w-[7.5rem] gap-px overflow-y-auto p-1`}
+          style={position}
         >
           {options.map((option, index) => {
             const isActive = option.value === value;
