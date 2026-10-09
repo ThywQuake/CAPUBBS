@@ -1,10 +1,12 @@
 import { DialogLayer } from '../layout/DialogPresence';
 import {
+  AlignCenter, AlignLeft, AlignRight,
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BetweenHorizontalEnd, BetweenHorizontalStart,
   BetweenVerticalEnd, BetweenVerticalStart, Table, TableCellsMerge, TableCellsSplit, Trash2, X,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import type { LucideIcon } from 'lucide-react';
 import {
   buildEditorTableHtml,
   canMoveTableColumns,
@@ -21,9 +23,11 @@ import {
   moveTableColumns,
   moveTableRows,
   readEditorTable,
+  setTableCellsAlign,
   setTableCellText,
   splitTableCells,
   type EditorTable,
+  type TableCellAlign,
   type TableRange,
 } from './RichTextEditor.table';
 
@@ -58,6 +62,8 @@ export function TableDialog({
   const selectedIds = new Set(getTableRangeCellIds(table.grid, range));
   const canMerge = selectedIds.size > 1;
   const canSplit = hasMergedCell(table, range);
+  const selectedAligns = new Set([...selectedIds].map((id) => table.cells[id].align ?? 'left'));
+  const currentAlign = selectedAligns.size === 1 ? [...selectedAligns][0] : null;
 
   useEffect(() => {
     document.body.classList.add('gallery-dialog-open');
@@ -164,6 +170,10 @@ export function TableDialog({
     selectRange(splitTableCells(table, range), range);
   }
 
+  function align(value: TableCellAlign) {
+    setTable(setTableCellsAlign(table, [...selectedIds], value));
+  }
+
   const renderedIds = new Set<string>();
 
   return createPortal(
@@ -183,22 +193,26 @@ export function TableDialog({
 
         <div className="table-dialog-toolbar" role="toolbar" aria-label="表格操作">
           <ToolGroup label="行">
-            <ToolButton label="上方插入行" onClick={() => insertRow('above')}><BetweenHorizontalStart size={16} /></ToolButton>
-            <ToolButton label="下方插入行" onClick={() => insertRow('below')}><BetweenHorizontalEnd size={16} /></ToolButton>
-            <ToolButton disabled={!canMoveTableRows(table, range, -1)} label="上移行" onClick={() => moveRows(-1)}><ArrowUp size={16} /></ToolButton>
-            <ToolButton disabled={!canMoveTableRows(table, range, 1)} label="下移行" onClick={() => moveRows(1)}><ArrowDown size={16} /></ToolButton>
-            <ToolButton danger disabled={range.bottom - range.top + 1 >= rows} label="删除行" onClick={deleteRows}><Trash2 size={16} /></ToolButton>
+            <ToolButton icon={BetweenHorizontalStart} label="上方插入行" onClick={() => insertRow('above')} text="上方插入" />
+            <ToolButton icon={BetweenHorizontalEnd} label="下方插入行" onClick={() => insertRow('below')} text="下方插入" />
+            <ToolButton disabled={!canMoveTableRows(table, range, -1)} icon={ArrowUp} label="上移行" onClick={() => moveRows(-1)} text="上移" />
+            <ToolButton disabled={!canMoveTableRows(table, range, 1)} icon={ArrowDown} label="下移行" onClick={() => moveRows(1)} text="下移" />
+            <ToolButton danger disabled={range.bottom - range.top + 1 >= rows} icon={Trash2} label="删除行" onClick={deleteRows} text="删除" />
           </ToolGroup>
           <ToolGroup label="列">
-            <ToolButton label="左侧插入列" onClick={() => insertColumn('left')}><BetweenVerticalStart size={16} /></ToolButton>
-            <ToolButton label="右侧插入列" onClick={() => insertColumn('right')}><BetweenVerticalEnd size={16} /></ToolButton>
-            <ToolButton disabled={!canMoveTableColumns(table, range, -1)} label="左移列" onClick={() => moveColumns(-1)}><ArrowLeft size={16} /></ToolButton>
-            <ToolButton disabled={!canMoveTableColumns(table, range, 1)} label="右移列" onClick={() => moveColumns(1)}><ArrowRight size={16} /></ToolButton>
-            <ToolButton danger disabled={range.right - range.left + 1 >= columns} label="删除列" onClick={deleteColumns}><Trash2 size={16} /></ToolButton>
+            <ToolButton icon={BetweenVerticalStart} label="左侧插入列" onClick={() => insertColumn('left')} text="左侧插入" />
+            <ToolButton icon={BetweenVerticalEnd} label="右侧插入列" onClick={() => insertColumn('right')} text="右侧插入" />
+            <ToolButton disabled={!canMoveTableColumns(table, range, -1)} icon={ArrowLeft} label="左移列" onClick={() => moveColumns(-1)} text="左移" />
+            <ToolButton disabled={!canMoveTableColumns(table, range, 1)} icon={ArrowRight} label="右移列" onClick={() => moveColumns(1)} text="右移" />
+            <ToolButton danger disabled={range.right - range.left + 1 >= columns} icon={Trash2} label="删除列" onClick={deleteColumns} text="删除" />
           </ToolGroup>
           <ToolGroup label="单元格">
-            <ToolButton disabled={!canMerge} label="合并单元格" onClick={merge}><TableCellsMerge size={16} /></ToolButton>
-            <ToolButton disabled={!canSplit} label="拆分单元格" onClick={split}><TableCellsSplit size={16} /></ToolButton>
+            <ToolButton disabled={!canMerge} icon={TableCellsMerge} label="合并单元格" onClick={merge} text="合并" />
+            <ToolButton disabled={!canSplit} icon={TableCellsSplit} label="拆分单元格" onClick={split} text="拆分" />
+            <span aria-hidden="true" className="table-dialog-tool-divider" />
+            <ToolButton active={currentAlign === 'left'} icon={AlignLeft} label="左对齐" onClick={() => align('left')} text="左对齐" />
+            <ToolButton active={currentAlign === 'center'} icon={AlignCenter} label="居中" onClick={() => align('center')} text="居中" />
+            <ToolButton active={currentAlign === 'right'} icon={AlignRight} label="右对齐" onClick={() => align('right')} text="右对齐" />
           </ToolGroup>
         </div>
 
@@ -236,6 +250,7 @@ export function TableDialog({
                             if (!draggingRef.current && !selectedIds.has(id)) selectCell(position);
                           }}
                           rows={1}
+                          style={table.cells[id].align ? { textAlign: table.cells[id].align } : undefined}
                           value={table.cells[id].text}
                         />
                       </td>
@@ -263,32 +278,35 @@ export function TableDialog({
 function ToolGroup({ children, label }: { children: ReactNode; label: string }) {
   return (
     <div className="table-dialog-tool-group" role="group" aria-label={label}>
-      <span>{label}</span>
-      {children}
+      <span className="table-dialog-tool-label">{label}</span>
+      <div className="table-dialog-tool-buttons">{children}</div>
     </div>
   );
 }
 
 function ToolButton({
-  children, danger, disabled, label, onClick,
+  active, danger, disabled, icon: Icon, label, onClick, text,
 }: {
-  children: ReactNode;
+  active?: boolean;
   danger?: boolean;
   disabled?: boolean;
+  icon: LucideIcon;
   label: string;
   onClick: () => void;
+  text: string;
 }) {
   return (
     <button
       aria-label={label}
-      className={danger ? 'is-danger' : undefined}
+      aria-pressed={active === undefined ? undefined : active}
+      className={[danger ? 'is-danger' : '', active ? 'is-active' : ''].filter(Boolean).join(' ') || undefined}
       disabled={disabled}
       onClick={onClick}
       onPointerDown={(event) => event.preventDefault()}
-      title={label}
       type="button"
     >
-      {children}
+      <Icon size={15} />
+      <span>{text}</span>
     </button>
   );
 }

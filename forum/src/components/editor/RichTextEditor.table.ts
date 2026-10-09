@@ -1,5 +1,8 @@
 // A table is a grid of cell ids: a merged cell is the same id repeated over a rectangle.
+export type TableCellAlign = 'center' | 'left' | 'right';
+
 export type EditorTableCell = {
+  align?: TableCellAlign;
   html: string;
   originalText?: string;
   source?: HTMLTableCellElement;
@@ -37,6 +40,12 @@ function readCellText(cell: HTMLElement) {
   return (copy.textContent ?? '').replace(/ /g, ' ').trim();
 }
 
+function readCellAlign(cell: HTMLTableCellElement): TableCellAlign | undefined {
+  const align = (cell.style.textAlign || cell.getAttribute('align') || '').toLowerCase();
+  if (align === 'center' || align === 'right') return align;
+  return align === 'left' ? 'left' : undefined;
+}
+
 export function readEditorTable(table: HTMLTableElement): EditorTable {
   const rows = Array.from(table.rows);
   const cells: EditorTable['cells'] = {};
@@ -48,7 +57,7 @@ export function readEditorTable(table: HTMLTableElement): EditorTable {
       while (grid[rowIndex][column]) column += 1;
       const id = createCellId();
       const text = readCellText(cell);
-      cells[id] = { html: cell.innerHTML, originalText: text, source: cell, text };
+      cells[id] = { align: readCellAlign(cell), html: cell.innerHTML, originalText: text, source: cell, text };
       const rowSpan = Math.min(Math.max(cell.rowSpan || 1, 1), rows.length - rowIndex);
       const colSpan = Math.max(cell.colSpan || 1, 1);
       for (let r = rowIndex; r < rowIndex + rowSpan; r += 1) {
@@ -94,6 +103,9 @@ export function buildEditorTableHtml(table: EditorTable) {
         : document.createElement('td');
       td.removeAttribute('rowspan');
       td.removeAttribute('colspan');
+      td.removeAttribute('align');
+      td.style.textAlign = cell.align ?? '';
+      if (!td.getAttribute('style')) td.removeAttribute('style');
       if (bottom > rowIndex) td.rowSpan = bottom - rowIndex + 1;
       if (right > columnIndex) td.colSpan = right - columnIndex + 1;
       td.innerHTML = getCellHtml(cell);
@@ -168,6 +180,14 @@ function pruneCells(table: EditorTable): EditorTable {
 
 export function setTableCellText(table: EditorTable, id: string, text: string): EditorTable {
   return { ...table, cells: { ...table.cells, [id]: { ...table.cells[id], text } } };
+}
+
+export function setTableCellsAlign(table: EditorTable, ids: string[], align: TableCellAlign): EditorTable {
+  const cells = { ...table.cells };
+  ids.forEach((id) => {
+    cells[id] = { ...cells[id], align: align === 'left' ? undefined : align };
+  });
+  return { ...table, cells };
 }
 
 // A new row keeps merged cells that span across the insertion line merged.
