@@ -479,8 +479,8 @@ function jiekoufunc_medal_preferences_update($con, $token, $params) {
     if ($invalid_ids) {
         return jiekoufunc_report('14', '勋章设置参数格式错误。');
     }
-    if (count($display_ids) > 3) {
-        return jiekoufunc_report('14', '最多只能展示三枚勋章。');
+    if (count($display_ids) > 5) {
+        return jiekoufunc_report('14', '最多只能展示五枚勋章。');
     }
     if (array_intersect($display_ids, $hidden_ids)) {
         return jiekoufunc_report('14', '同一枚勋章不能同时展示和隐藏。');
@@ -589,7 +589,7 @@ function medal_query_profile_by_usernames($con, $usernames) {
 }
 
 /**
- * Return at most three explicitly displayed medals per user for thread payloads.
+ * Return at most five explicitly displayed medals per user for thread payloads.
  */
 function medal_query_thread_by_usernames($con, $usernames) {
     return medal_query_public_by_usernames($con, $usernames, true);
@@ -631,7 +631,7 @@ function medal_query_public_by_usernames($con, $usernames, $display_only) {
         if (!isset($requested[$username])) {
             continue;
         }
-        if ($display_only && count($requested[$username]) >= 3) {
+        if ($display_only && count($requested[$username]) >= 5) {
             continue;
         }
         $requested[$username][] = $display_only
