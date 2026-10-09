@@ -61,6 +61,12 @@
     white-space: pre-line;
   }
 
+  /* Full width like post tables (forumTables.ts), so cell alignment is visible while editing. */
+  .capubbs-editor-prose table {
+    display: table;
+    width: 100%;
+  }
+
   .capubbs-editor-prose {
     color: var(--text);
     font-size: var(--forum-content-font-size, 15px);

@@ -89,14 +89,22 @@
   border-right: 1px solid var(--line) !important;
 }
 
+/* Header cells stay left-aligned like before unless they set an alignment themselves. */
+.forum-markup .forum-data-table th:not([align]) {
+  text-align: left;
+}
+
 .forum-markup .forum-data-table :is(th, .forum-table-heading) {
   background: var(--surface-soft) !important;
   color: var(--text-faint) !important;
   font-weight: var(--font-weight-bold) !important;
 }
 
+/* Inline-block so the cell's own text-align (editor alignment, legacy align) places it. */
 .forum-markup .forum-table-cell-content {
+  display: inline-block;
   width: max-content;
+  vertical-align: middle;
   max-width: min(36ch, 60vw);
   overflow-wrap: anywhere;
 }

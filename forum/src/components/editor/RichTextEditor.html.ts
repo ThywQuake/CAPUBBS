@@ -227,9 +227,8 @@ export function buildHtmlPreviewDocument(
       }
 
       table {
-        display: block;
-        max-width: 100%;
-        overflow-x: auto;
+        display: table;
+        width: 100%;
         border-collapse: collapse;
       }
 

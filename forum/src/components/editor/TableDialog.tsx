@@ -4,7 +4,7 @@ import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BetweenHorizontalEnd, BetweenHorizontalStart,
   BetweenVerticalEnd, BetweenVerticalStart, Table, TableCellsMerge, TableCellsSplit, Trash2, X,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -101,6 +101,21 @@ export function TableDialog({
         ?.querySelector<HTMLTextAreaElement>(`textarea[data-row="${position.row}"][data-column="${position.column}"]`)
         ?.focus();
     });
+  }
+
+  // Enter goes to the cell below (Shift+Enter keeps the line break); on the last row it stays put.
+  function handleCellKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>, id: string, position: CellPosition) {
+    if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    let below = position.row;
+    while (table.grid[below + 1]?.[position.column] === id) below += 1;
+    const nextId = table.grid[below + 1]?.[position.column];
+    if (!nextId) return;
+    const row = table.grid.findIndex((cells) => cells.includes(nextId));
+    const next = { column: table.grid[row].indexOf(nextId), row };
+    selectCell(next);
+    focusCell(next);
   }
 
   function handleCellPointerDown(event: PointerEvent<HTMLTableCellElement>, position: CellPosition) {
@@ -246,6 +261,7 @@ export function TableDialog({
                           data-column={columnIndex}
                           data-row={rowIndex}
                           onChange={(event) => setTable((current) => setTableCellText(current, id, event.target.value))}
+                          onKeyDown={(event) => handleCellKeyDown(event, id, position)}
                           onFocus={() => {
                             if (!draggingRef.current && !selectedIds.has(id)) selectCell(position);
                           }}
