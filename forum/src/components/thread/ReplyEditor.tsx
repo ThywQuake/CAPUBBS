@@ -1,6 +1,6 @@
 import { appendGalleryImageQuote, type GalleryImageQuote } from '../../utils/galleryQuote';
 import { DialogPresence } from '../layout/DialogPresence';
-import { RotateCcw, Save, Send, Trash2 } from "lucide-react";
+import { Save, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoadingSpinner as LoaderCircle } from '../layout/LoadingSpinner';
 import {
@@ -44,6 +44,7 @@ import {
   type PostEditorPreviewAuthor,
 } from "./PostEditor";
 import { Button } from '../Button';
+import { DraftRestoreCard } from './DraftRestoreCard';
 import { useConfirmDialog } from '../ConfirmDialog';
 import { isBeforeCurrentCapuYear } from '../../utils/capuYear';
 import { LoadingState } from '../layout/LoadingState';
@@ -382,29 +383,17 @@ export function ReplyEditor({
   if (pendingDraft) {
     return (
       <>
-        <section
-          aria-labelledby="reply-editor-title"
-          className="forum-card reply-editor reply-draft-restore"
+        <DraftRestoreCard
+          deleting={isDeletingDraft}
+          editorRef={editorRef}
+          error={statusIsError ? status : undefined}
+          excerpt={pendingDraft.excerpt}
+          heading="回复草稿"
           id="reply-editor"
-          ref={editorRef}
-        >
-          <header className="reply-editor-heading">
-            <h2 id="reply-editor-title">回复草稿</h2>
-            <p>{formatPostEditorPreviewTimestamp(new Date(pendingDraft.updatedAt))}</p>
-          </header>
-          <p className="reply-draft-restore-excerpt">{pendingDraft.excerpt}</p>
-          {statusIsError && status && <p className="reply-draft-restore-status" role="alert">{status}</p>}
-          <div className="reply-draft-restore-actions">
-            <Button disabled={isDeletingDraft} onClick={() => void removePendingDraft()} variant="danger">
-              {isDeletingDraft ? <LoaderCircle size={15} /> : <Trash2 size={15} />}
-              删除草稿
-            </Button>
-            <Button disabled={isDeletingDraft} onClick={restorePendingDraft} variant="primary">
-              <RotateCcw size={15} />
-              恢复草稿
-            </Button>
-          </div>
-        </section>
+          onDelete={() => void removePendingDraft()}
+          onRestore={restorePendingDraft}
+          updatedAt={pendingDraft.updatedAt}
+        />
         {confirmDialog}
       </>
     );

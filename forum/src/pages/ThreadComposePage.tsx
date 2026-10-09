@@ -54,8 +54,10 @@ import {
   type StoredReplyAttachment,
 } from '../utils/replyDraftStorage';
 import {
+  deleteStoredThreadComposeDraft,
   readStoredThreadComposeDraft,
   saveStoredThreadComposeDraft,
+  type StoredThreadComposeDraft,
 } from '../utils/threadComposeDraftStorage';
 import { getThreadFloorHref } from '../utils/threadRoutes';
 import {
@@ -69,6 +71,7 @@ import {
   type ActivitySignupSettings,
 } from '../utils/activitySignup';
 import { Button } from '../components/Button';
+import { DraftRestoreCard } from '../components/thread/DraftRestoreCard';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 
 const THREAD_API_URL = import.meta.env.VITE_API_URL?.trim() || '/api/api.php';
@@ -107,6 +110,8 @@ export function ThreadComposePage() {
   const [previewedAt, setPreviewedAt] = useState('');
   const [draftLoadComplete, setDraftLoadComplete] = useState(false);
   const [storedReplyDraftId, setStoredReplyDraftId] = useState<string | null>(null);
+  const [pendingComposeDraft, setPendingComposeDraft] = useState<StoredThreadComposeDraft | null>(null);
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState(() => makeSnapshot('', { content: '', mode: 'rich' }, 0, [], null, null));
   const lastAutoSaveAttemptRef = useRef<string | null>(null);
 
@@ -210,6 +215,7 @@ export function ThreadComposePage() {
     setAttachments([]);
     setReplyBoardName('');
     setStoredReplyDraftId(null);
+    setPendingComposeDraft(null);
     setActivitySchedule(createDefaultActivityDateRange());
     setActivitySignup(createDefaultActivitySignupSettings(request.bid));
     setSavedSnapshot(makeSnapshot('', { content: '', mode: 'rich' }, defaultSignatureIndex, [], null, null));
@@ -239,30 +245,7 @@ export function ThreadComposePage() {
 
       const draft = await readStoredThreadComposeDraft(request.bid, ownerKey, isActivity ? 'activity' : 'thread');
       if (!active) return;
-      if (draft) {
-        setTitle(draft.title);
-        setEditorValue(draft.editor);
-        setSignatureIndex(draft.signatureIndex);
-        setAttachments(draft.attachments);
-        const signupSettings = isActivity
-          ? draft.activitySignup ?? createDefaultActivitySignupSettings(request.bid)
-          : createDefaultActivitySignupSettings(request.bid);
-        const activityDateRange = isActivity
-          ? draft.activitySchedule ?? createDefaultActivityDateRange()
-          : createDefaultActivityDateRange();
-        setActivitySchedule(activityDateRange);
-        setActivitySignup(signupSettings);
-        setSavedSnapshot(makeSnapshot(
-          draft.title,
-          draft.editor,
-          draft.signatureIndex,
-          draft.attachments,
-          isActivity ? activityDateRange : null,
-          isActivity ? signupSettings : null,
-        ));
-        setStatus('已恢复这个版块的发帖草稿');
-        setStatusIsError(false);
-      }
+      setPendingComposeDraft(draft);
       setDraftLoadComplete(true);
     };
 
@@ -290,6 +273,7 @@ export function ThreadComposePage() {
     if (
       !autoSaveEnabled
       || !draftLoadComplete
+      || pendingComposeDraft
       || !request
       || !boardName
       || !ownerKey
@@ -311,6 +295,7 @@ export function ThreadComposePage() {
     currentSnapshot,
     draftLoadComplete,
     isDirty,
+    pendingComposeDraft,
     isPublishing,
     isReply,
     isSavingDraft,
@@ -319,6 +304,57 @@ export function ThreadComposePage() {
     request,
     title,
   ]);
+
+  function restorePendingComposeDraft() {
+    if (!request || !pendingComposeDraft) return;
+    const draft = pendingComposeDraft;
+    setTitle(draft.title);
+    setEditorValue(draft.editor);
+    setSignatureIndex(draft.signatureIndex);
+    setAttachments(draft.attachments);
+    const signupSettings = isActivity
+      ? draft.activitySignup ?? createDefaultActivitySignupSettings(request.bid)
+      : createDefaultActivitySignupSettings(request.bid);
+    const activityDateRange = isActivity
+      ? draft.activitySchedule ?? createDefaultActivityDateRange()
+      : createDefaultActivityDateRange();
+    setActivitySchedule(activityDateRange);
+    setActivitySignup(signupSettings);
+    setSavedSnapshot(makeSnapshot(
+      draft.title,
+      draft.editor,
+      draft.signatureIndex,
+      draft.attachments,
+      isActivity ? activityDateRange : null,
+      isActivity ? signupSettings : null,
+    ));
+    setPendingComposeDraft(null);
+    setStatus('已恢复草稿');
+    setStatusIsError(false);
+  }
+
+  async function removePendingComposeDraft() {
+    if (!request || !pendingComposeDraft || isDeletingDraft) return;
+    if (!(await confirm({
+      cancelLabel: '取消',
+      confirmLabel: '删除',
+      danger: true,
+      message: '删除后无法恢复。',
+      title: '删除草稿',
+    }))) return;
+
+    setIsDeletingDraft(true);
+    try {
+      await deleteStoredThreadComposeDraft(request.bid, ownerKey, isActivity ? 'activity' : 'thread');
+      setPendingComposeDraft(null);
+      clearStatus();
+    } catch {
+      setStatus('草稿删除失败，请稍后重试');
+      setStatusIsError(true);
+    } finally {
+      setIsDeletingDraft(false);
+    }
+  }
 
   function clearStatus() {
     setStatus('');
@@ -562,93 +598,107 @@ export function ThreadComposePage() {
               </div>
             </header>
 
-            <PostEditor
-              afterEditor={isActivity ? (
-                <ActivitySignupEditor
-                  onChange={(value) => {
-                    setActivitySignup(value);
-                    clearStatus();
-                  }}
-                  value={activitySignup}
-                />
-              ) : undefined}
-              ariaLabel={isReply ? `编辑《${title}》的回帖草稿` : `在「${boardName}」${isActivity ? '发起活动' : '发表新主题'}`}
-              attachmentDialogDescription={`文件会立即上传，并在发表${isReply ? '回复' : '主题'}后关联到内容`}
-              attachmentLabel={isReply ? '回帖附件' : '主题附件'}
-              attachments={attachments}
-              beforeEditor={!isReply ? (
-                <>
-                  <PostEditorTitleField
-                    label=""
+            {pendingComposeDraft ? (
+              <DraftRestoreCard
+                className="thread-edit-form"
+                deleting={isDeletingDraft}
+                error={statusIsError ? status : undefined}
+                excerpt={pendingComposeDraft.excerpt}
+                heading={pendingComposeDraft.title}
+                id="compose-draft-restore"
+                onDelete={() => void removePendingComposeDraft()}
+                onRestore={restorePendingComposeDraft}
+                updatedAt={pendingComposeDraft.updatedAt}
+              />
+            ) : (
+              <PostEditor
+                afterEditor={isActivity ? (
+                  <ActivitySignupEditor
                     onChange={(value) => {
-                      setTitle(value);
+                      setActivitySignup(value);
                       clearStatus();
                     }}
-                    placeholder={isActivity ? '请输入活动名称' : '请输入帖子标题'}
-                    required
-                    value={title}
+                    value={activitySignup}
                   />
-                  {isActivity ? (
-                    <>
-                      <ActivityDateSchedule
-                        onChange={(value) => {
-                          setActivitySchedule(value);
-                          clearStatus();
-                        }}
-                        value={activitySchedule}
-                      />
-                      <ActivitySignupSchedule
-                        onChange={(value) => {
-                          setActivitySignup(value);
-                          clearStatus();
-                        }}
-                        value={activitySignup}
-                      />
-                    </>
-                  ) : null}
-                </>
-              ) : undefined}
-              className={`thread-edit-form ${isActivity ? 'activity-compose-form' : ''}`}
-              editorValue={editorValue}
-              formatAttachmentMeta={(attachment) => formatPostEditorBytes(attachment.size)}
-              heading={isReply ? '编辑回帖草稿' : isActivity ? '新活动' : '新主题'}
-              headingMeta={isReply ? `Re: ${title}` : title.trim() ? title.trim() : `发布到 ${boardName}`}
-              name={isReply ? 'reply-draft-compose-signature' : 'thread-compose-signature'}
-              onAddAttachments={(files) => void addAttachments(files)}
-              onChange={(value) => {
-                setEditorValue(value);
-                clearStatus();
-              }}
-              onPreview={() => openPreview()}
-              onRemoveAttachment={removeAttachment}
-              onSignatureChange={(value) => {
-                setSignatureIndex(value);
-                clearStatus();
-              }}
-              onSubmit={() => {
-                if (canPublish && hasPostEditorCustomColors(editorValue)) openPreview(true);
-                else void publish();
-              }}
-              previewDisabled={!contentReady}
-              secondaryActions={(
-                <Button
-                  disabled={isSavingDraft || isPublishing}
-                  onClick={() => void saveDraft()}
-                  type="button"
-                >
-                  {isSavingDraft ? <LoaderCircle size={15} /> : <Save size={15} />}
-                  {isSavingDraft ? '保存中' : '保存草稿'}
-                </Button>
-              )}
-              signatureIndex={signatureIndex}
-              status={status}
-              statusIsError={statusIsError}
-              submitDisabled={!canPublish}
-              submitIcon={isPublishing ? <LoaderCircle size={15} /> : <Send size={15} />}
-              submitLabel={isPublishing ? '正在发表' : isReply ? '发布回复' : isActivity ? '发布活动' : '发表主题'}
-              attachmentUploadProgress={attachmentUploadProgress}
-              uploadingAttachments={isUploadingAttachments}
-            />
+                ) : undefined}
+                ariaLabel={isReply ? `编辑《${title}》的回帖草稿` : `在「${boardName}」${isActivity ? '发起活动' : '发表新主题'}`}
+                attachmentDialogDescription={`文件会立即上传，并在发表${isReply ? '回复' : '主题'}后关联到内容`}
+                attachmentLabel={isReply ? '回帖附件' : '主题附件'}
+                attachments={attachments}
+                beforeEditor={!isReply ? (
+                  <>
+                    <PostEditorTitleField
+                      label=""
+                      onChange={(value) => {
+                        setTitle(value);
+                        clearStatus();
+                      }}
+                      placeholder={isActivity ? '请输入活动名称' : '请输入帖子标题'}
+                      required
+                      value={title}
+                    />
+                    {isActivity ? (
+                      <>
+                        <ActivityDateSchedule
+                          onChange={(value) => {
+                            setActivitySchedule(value);
+                            clearStatus();
+                          }}
+                          value={activitySchedule}
+                        />
+                        <ActivitySignupSchedule
+                          onChange={(value) => {
+                            setActivitySignup(value);
+                            clearStatus();
+                          }}
+                          value={activitySignup}
+                        />
+                      </>
+                    ) : null}
+                  </>
+                ) : undefined}
+                className={`thread-edit-form ${isActivity ? 'activity-compose-form' : ''}`}
+                editorValue={editorValue}
+                formatAttachmentMeta={(attachment) => formatPostEditorBytes(attachment.size)}
+                heading={isReply ? '编辑回帖草稿' : isActivity ? '新活动' : '新主题'}
+                headingMeta={isReply ? `Re: ${title}` : title.trim() ? title.trim() : `发布到 ${boardName}`}
+                name={isReply ? 'reply-draft-compose-signature' : 'thread-compose-signature'}
+                onAddAttachments={(files) => void addAttachments(files)}
+                onChange={(value) => {
+                  setEditorValue(value);
+                  clearStatus();
+                }}
+                onPreview={() => openPreview()}
+                onRemoveAttachment={removeAttachment}
+                onSignatureChange={(value) => {
+                  setSignatureIndex(value);
+                  clearStatus();
+                }}
+                onSubmit={() => {
+                  if (canPublish && hasPostEditorCustomColors(editorValue)) openPreview(true);
+                  else void publish();
+                }}
+                previewDisabled={!contentReady}
+                secondaryActions={(
+                  <Button
+                    disabled={isSavingDraft || isPublishing}
+                    onClick={() => void saveDraft()}
+                    type="button"
+                  >
+                    {isSavingDraft ? <LoaderCircle size={15} /> : <Save size={15} />}
+                    {isSavingDraft ? '保存中' : '保存草稿'}
+                  </Button>
+                )}
+                signatureIndex={signatureIndex}
+                status={status}
+                statusIsError={statusIsError}
+                submitDisabled={!canPublish}
+                submitIcon={isPublishing ? <LoaderCircle size={15} /> : <Send size={15} />}
+                submitLabel={isPublishing ? '正在发表' : isReply ? '发布回复' : isActivity ? '发布活动' : '发表主题'}
+                attachmentUploadProgress={attachmentUploadProgress}
+                uploadingAttachments={isUploadingAttachments}
+              />
+            )}
           </>
         ) : null}
       </main>
