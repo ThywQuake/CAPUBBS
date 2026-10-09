@@ -1,11 +1,13 @@
 import { ensureGalleryQuoteControls, type GalleryImageQuote } from '../../utils/galleryQuote';
 import type { SafeForumHtml } from '../../utils/forumMarkup';
-import { useEffect, useLayoutEffect, useMemo, useRef, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { syncForumGrayscaleTextColors } from '../../utils/forumGrayscaleTextColor';
 import { preloadNearbyImages } from '../../utils/imagePreloading';
 import { deferGalleryImageSources } from '../../utils/galleryImageLoading';
-import { prepareForumTables } from './forumTables';
+import { getForumTableExpandTarget, prepareForumTables } from './forumTables';
+import { ForumTableDialog } from './ForumTableDialog';
+import { DialogPresence } from '../layout/DialogPresence';
 import { preparePunishmentTableFit } from './punishmentTableFit';
 import '../../styles/forum-tables.css';
 import '../../styles/punishment-record-tag.css';
@@ -57,6 +59,7 @@ export function ForumMarkup({
   const onImageQuoteRef = useRef(onImageQuote);
   onImageQuoteRef.current = onImageQuote;
   const { theme } = useTheme();
+  const [expandedTableHtml, setExpandedTableHtml] = useState<string | null>(null);
   const dangerousHtml = useMemo(() => ({ __html: deferGalleryImageSources(html) }), [html]);
 
   useLayoutEffect(() => {
@@ -155,6 +158,14 @@ export function ForumMarkup({
   }
 
   function handleClick(event: MouseEvent<HTMLDivElement>) {
+    const expandedTable = getForumTableExpandTarget(event.target);
+    if (expandedTable) {
+      event.preventDefault();
+      event.stopPropagation();
+      setExpandedTableHtml(expandedTable.outerHTML);
+      return;
+    }
+
     const galleryAction = getEditorGalleryAction(event.target);
     if (galleryAction && event.target instanceof Element) {
       event.preventDefault();
@@ -192,14 +203,19 @@ export function ForumMarkup({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={`forum-markup forum-markup-${variant} ${className}`.trim()}
-      data-forum-markup={variant}
-      dangerouslySetInnerHTML={dangerousHtml}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className={`forum-markup forum-markup-${variant} ${className}`.trim()}
+        data-forum-markup={variant}
+        dangerouslySetInnerHTML={dangerousHtml}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+      />
+      <DialogPresence>{expandedTableHtml ? (
+        <ForumTableDialog html={expandedTableHtml} onClose={() => setExpandedTableHtml(null)} />
+      ) : null}</DialogPresence>
+    </>
   );
 }
 

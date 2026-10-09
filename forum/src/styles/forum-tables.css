@@ -139,3 +139,66 @@
 .dark .forum-markup .forum-table-first-column::after {
   background: linear-gradient(90deg, rgb(0 0 0 / 42%), rgb(0 0 0 / 14%) 55%, transparent);
 }
+
+.forum-markup .forum-table-expand {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.forum-markup .forum-table-viewport:hover > .forum-table-expand,
+.forum-markup .forum-table-viewport:focus-within > .forum-table-expand {
+  opacity: 1;
+}
+
+.forum-markup .forum-table-expand:hover {
+  border-color: var(--brand);
+  color: var(--brand-strong);
+}
+
+.forum-markup .forum-table-expand:focus-visible {
+  opacity: 1;
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: none) {
+  .forum-markup .forum-table-expand {
+    opacity: 1;
+  }
+}
+
+.forum-table-dialog {
+  width: min(1200px, 100%);
+  max-height: calc(100dvh - 36px);
+}
+
+.forum-table-dialog .forum-table-dialog-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+}
+
+.forum-table-dialog .forum-table-dialog-body:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.forum-table-dialog .forum-table-cell-content {
+  max-width: min(60ch, 80vw);
+}
