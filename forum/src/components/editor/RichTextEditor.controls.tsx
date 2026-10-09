@@ -137,9 +137,51 @@ export function RichTextEditorControls(props: Props) {
               <ToolbarButton active={activeRichCommands.strikeThrough} label="删除线" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('strikeThrough')}>
                 <Strikethrough size={14} />
               </ToolbarButton>
+              <ToolbarButton active={activeRichCommands.superscript} label="上标" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('superscript')}>
+                <Superscript size={14} />
+              </ToolbarButton>
+              <ToolbarButton active={activeRichCommands.subscript} label="下标" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('subscript')}>
+                <Subscript size={14} />
+              </ToolbarButton>
+              <button
+                ref={colorTriggerRef}
+                type="button"
+                onMouseDown={(event) => {
+                  handleToolbarMouseDown(event);
+                  saveSelection();
+                }}
+                onClick={toggleColorPicker}
+                className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--control-radius)] border text-[#174f38] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:text-white ${
+                  isColorPickerOpen
+                    ? 'border-[#174f38]/30 bg-[#174f38]/10 dark:border-emerald-200/30 dark:bg-emerald-200/15'
+                    : 'border-transparent hover:border-zinc-200 hover:bg-zinc-100 dark:hover:border-white/10 dark:hover:bg-white/[0.1]'
+                }`}
+                aria-label="文字颜色"
+                aria-haspopup="dialog"
+                aria-expanded={isColorPickerOpen}
+                data-toolbar-tooltip={isColorPickerOpen ? undefined : '文字颜色'}
+              >
+                <Palette size={14} />
+                <span
+                  className="pointer-events-none absolute inset-x-1 bottom-0.5 h-0.5 rounded-full"
+                  style={{ backgroundColor: normalizeCssColor(selectedTextColor) ?? defaultTextColor }}
+                  aria-hidden="true"
+                />
+              </button>
 
               <ToolbarDivider />
 
+              <ToolbarMenu
+                label="标题格式"
+                onOpen={saveSelection}
+                onSelect={handleRichHeadingChange}
+                onTriggerMouseDown={handleToolbarMouseDown}
+                options={richTextHeadingOptions}
+                triggerClassName="w-16"
+                value={headingSelectValue}
+              >
+                {richTextHeadingOptions.find((option) => option.value === headingSelectValue)?.label ?? '正文'}
+              </ToolbarMenu>
               <ToolbarMenu
                 label="字体"
                 onOpen={saveSelection}
@@ -167,32 +209,6 @@ export function RichTextEditorControls(props: Props) {
 
               <ToolbarDivider />
 
-              <ToolbarButton active={activeRichCommands.superscript} label="上标" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('superscript')}>
-                <Superscript size={14} />
-              </ToolbarButton>
-              <ToolbarButton active={activeRichCommands.subscript} label="下标" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('subscript')}>
-                <Subscript size={14} />
-              </ToolbarButton>
-              <ToolbarMenu
-                label="标题格式"
-                onOpen={saveSelection}
-                onSelect={handleRichHeadingChange}
-                onTriggerMouseDown={handleToolbarMouseDown}
-                options={richTextHeadingOptions}
-                triggerClassName="w-16"
-                value={headingSelectValue}
-              >
-                {richTextHeadingOptions.find((option) => option.value === headingSelectValue)?.label ?? '正文'}
-              </ToolbarMenu>
-              <ToolbarButton active={activePopover === 'quote'} label="引用" onMouseDown={handleToolbarMouseDown} onClick={openQuotePopover}>
-                <MessageSquareQuote size={14} />
-              </ToolbarButton>
-
-              <ToolbarDivider />
-
-              <ToolbarButton active={activeRichCommands.firstLineIndent} label="首行缩进" onMouseDown={handleToolbarMouseDown} onClick={toggleRichFirstLineIndent}>
-                <TextInitial size={14} />
-              </ToolbarButton>
               <ToolbarMenu
                 label="对齐方式"
                 onSelect={(command) => runRichCommand(command)}
@@ -202,23 +218,38 @@ export function RichTextEditorControls(props: Props) {
               >
                 <ActiveAlignIcon size={14} />
               </ToolbarMenu>
+              <ToolbarButton active={activeRichCommands.firstLineIndent} label="首行缩进" onMouseDown={handleToolbarMouseDown} onClick={toggleRichFirstLineIndent}>
+                <TextInitial size={14} />
+              </ToolbarButton>
+              <ToolbarButton label="减少缩进" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('outdent')}>
+                <IndentDecrease size={14} />
+              </ToolbarButton>
+              <ToolbarButton label="增加缩进" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('indent')}>
+                <IndentIncrease size={14} />
+              </ToolbarButton>
+
+              <ToolbarDivider />
+
               <ToolbarButton label="无序列表" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('insertUnorderedList')}>
                 <List size={14} />
               </ToolbarButton>
               <ToolbarButton label="有序列表" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('insertOrderedList')}>
                 <ListOrdered size={14} />
               </ToolbarButton>
-              <ToolbarButton label="增加缩进" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('indent')}>
-                <IndentIncrease size={14} />
+              <ToolbarButton active={activePopover === 'quote'} label="引用" onMouseDown={handleToolbarMouseDown} onClick={openQuotePopover}>
+                <MessageSquareQuote size={14} />
               </ToolbarButton>
-              <ToolbarButton label="减少缩进" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('outdent')}>
-                <IndentDecrease size={14} />
+              <ToolbarButton label="分隔线" onMouseDown={handleToolbarMouseDown} onClick={insertHorizontalRule}>
+                <Minus size={14} />
               </ToolbarButton>
 
               <ToolbarDivider />
 
               <ToolbarButton label="插入链接" onMouseDown={handleToolbarMouseDown} onClick={() => openPopover('link')}>
                 <Link2 size={14} />
+              </ToolbarButton>
+              <ToolbarButton label="@ 用户" onMouseDown={handleToolbarMouseDown} onClick={() => openPopover('mention')}>
+                <AtSign size={14} />
               </ToolbarButton>
               <ToolbarButton label="插入图片" onMouseDown={handleToolbarMouseDown} onClick={() => openPopover('image')}>
                 <ImageIcon size={14} />
@@ -227,43 +258,12 @@ export function RichTextEditorControls(props: Props) {
                 <GalleryIcon size={14} />
               </ToolbarButton>
               {attachmentButton}
-              <ToolbarButton label="@ 用户" onMouseDown={handleToolbarMouseDown} onClick={() => openPopover('mention')}>
-                <AtSign size={14} />
-              </ToolbarButton>
-              <ToolbarButton label="分隔线" onMouseDown={handleToolbarMouseDown} onClick={insertHorizontalRule}>
-                <Minus size={14} />
-              </ToolbarButton>
-              <ToolbarButton label="清除格式" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('removeFormat')}>
-                <Eraser size={14} />
-              </ToolbarButton>
 
               <ToolbarDivider />
 
-              <button
-                ref={colorTriggerRef}
-                type="button"
-                onMouseDown={(event) => {
-                  handleToolbarMouseDown(event);
-                  saveSelection();
-                }}
-                onClick={toggleColorPicker}
-                className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--control-radius)] border text-[#174f38] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:text-white ${
-                  isColorPickerOpen
-                    ? 'border-[#174f38]/30 bg-[#174f38]/10 dark:border-emerald-200/30 dark:bg-emerald-200/15'
-                    : 'border-transparent hover:border-zinc-200 hover:bg-zinc-100 dark:hover:border-white/10 dark:hover:bg-white/[0.1]'
-                }`}
-                aria-label="文字颜色"
-                aria-haspopup="dialog"
-                aria-expanded={isColorPickerOpen}
-                data-toolbar-tooltip={isColorPickerOpen ? undefined : '文字颜色'}
-              >
-                <Palette size={14} />
-                <span
-                  className="pointer-events-none absolute inset-x-1 bottom-0.5 h-0.5 rounded-full"
-                  style={{ backgroundColor: normalizeCssColor(selectedTextColor) ?? defaultTextColor }}
-                  aria-hidden="true"
-                />
-              </button>
+              <ToolbarButton label="清除格式" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('removeFormat')}>
+                <Eraser size={14} />
+              </ToolbarButton>
             </div>
           </div>
         ) : null}
