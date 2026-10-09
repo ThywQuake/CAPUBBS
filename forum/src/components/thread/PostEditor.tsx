@@ -95,7 +95,6 @@ export function PostEditor({
   onRemoveAttachment,
   onSignatureChange,
   onSubmit,
-  overlay,
   placeholder,
   previewDisabled = false,
   secondaryActions,
@@ -129,7 +128,6 @@ export function PostEditor({
   onRemoveAttachment: (id: string) => void;
   onSignatureChange: (value: number) => void;
   onSubmit: () => void;
-  overlay?: ReactNode;
   placeholder?: string;
   previewDisabled?: boolean;
   secondaryActions?: ReactNode;
@@ -149,7 +147,7 @@ export function PostEditor({
   return (
     <section
       aria-labelledby={headingId}
-      className={`forum-card reply-editor${overlay ? ' reply-editor-overlaid' : ''} ${className}`.trim()}
+      className={`forum-card reply-editor ${className}`.trim()}
       id={id}
       ref={editorRef}
     >
@@ -252,7 +250,6 @@ export function PostEditor({
           progress={attachmentUploadProgress}
         />
       )}</DialogPresence>
-      {overlay}
     </section>
   );
 }

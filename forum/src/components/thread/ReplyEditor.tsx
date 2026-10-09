@@ -379,6 +379,37 @@ export function ReplyEditor({
     return <LoadingState className="thread-reply-loading" label="正在准备回复编辑器" variant="panel" />;
   }
 
+  if (pendingDraft) {
+    return (
+      <>
+        <section
+          aria-labelledby="reply-editor-title"
+          className="forum-card reply-editor reply-draft-restore"
+          id="reply-editor"
+          ref={editorRef}
+        >
+          <header className="reply-editor-heading">
+            <h2 id="reply-editor-title">回复草稿</h2>
+            <p>{formatPostEditorPreviewTimestamp(new Date(pendingDraft.updatedAt))}</p>
+          </header>
+          <p className="reply-draft-restore-excerpt">{pendingDraft.excerpt}</p>
+          {statusIsError && status && <p className="reply-draft-restore-status" role="alert">{status}</p>}
+          <div className="reply-draft-restore-actions">
+            <Button disabled={isDeletingDraft} onClick={() => void removePendingDraft()} variant="danger">
+              {isDeletingDraft ? <LoaderCircle size={15} /> : <Trash2 size={15} />}
+              删除草稿
+            </Button>
+            <Button disabled={isDeletingDraft} onClick={restorePendingDraft} variant="primary">
+              <RotateCcw size={15} />
+              恢复草稿
+            </Button>
+          </div>
+        </section>
+        {confirmDialog}
+      </>
+    );
+  }
+
   return (
     <>
       <PostEditor
@@ -402,26 +433,6 @@ export function ReplyEditor({
           setStatus("");
           setStatusIsError(false);
         }}
-        overlay={pendingDraft && (
-          <div aria-labelledby="reply-draft-restore-title" className="reply-draft-restore" role="group">
-            <header className="reply-editor-heading">
-              <h2 id="reply-draft-restore-title">回复草稿</h2>
-              <p>{formatPostEditorPreviewTimestamp(new Date(pendingDraft.updatedAt))}</p>
-            </header>
-            <p className="reply-draft-restore-excerpt">{pendingDraft.excerpt}</p>
-            {statusIsError && status && <p className="reply-draft-restore-status" role="alert">{status}</p>}
-            <div className="reply-draft-restore-actions">
-              <Button disabled={isDeletingDraft} onClick={() => void removePendingDraft()} variant="danger">
-                {isDeletingDraft ? <LoaderCircle size={15} /> : <Trash2 size={15} />}
-                删除草稿
-              </Button>
-              <Button disabled={isDeletingDraft} onClick={restorePendingDraft} variant="primary">
-                <RotateCcw size={15} />
-                恢复草稿
-              </Button>
-            </div>
-          </div>
-        )}
         onSubmit={() => {
           if (!isPublishing && !isUploadingAttachments && hasPostEditorCustomColors(editorValue)) openPreview(true);
           else void publishReply();
