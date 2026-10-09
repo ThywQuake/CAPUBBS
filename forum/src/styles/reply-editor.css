@@ -19,6 +19,32 @@
     margin-top: var(--space-18);
   }
 
+  .reply-draft-restore-excerpt {
+    display: -webkit-box;
+    margin: 0 var(--space-20);
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: var(--ui-font-size-md);
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .reply-draft-restore-status {
+    margin: var(--space-10) var(--space-20) 0;
+    color: var(--danger);
+    font-size: var(--ui-font-size-sm);
+  }
+
+  .reply-draft-restore-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-8);
+    padding: var(--space-16) var(--space-20) var(--space-18);
+  }
+
   .reply-editor-heading {
     display: flex;
     align-items: center;

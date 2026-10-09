@@ -1,6 +1,6 @@
 import { appendGalleryImageQuote, type GalleryImageQuote } from '../../utils/galleryQuote';
 import { DialogPresence } from '../layout/DialogPresence';
-import { Save, Send } from "lucide-react";
+import { RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoadingSpinner as LoaderCircle } from '../layout/LoadingSpinner';
 import {
@@ -24,9 +24,12 @@ import {
   normalizeFloorQuotesForLegacyStorage,
 } from "../../utils/floorQuote";
 import {
+  deleteStoredReplyDraftForThread,
+  readStoredReplyDraftForThread,
   saveStoredReplyDraft,
   type ReplyDraftSaveFailureReason,
   type StoredReplyAttachment,
+  type StoredReplyDraft,
 } from "../../utils/replyDraftStorage";
 import { toForumHref } from "../../utils/forumBasePath";
 import { getThreadFloorHref } from "../../utils/threadRoutes";
@@ -43,6 +46,7 @@ import {
 import { Button } from '../Button';
 import { useConfirmDialog } from '../ConfirmDialog';
 import { isBeforeCurrentCapuYear } from '../../utils/capuYear';
+import { LoadingState } from '../layout/LoadingState';
 
 export type QuoteRequest = {
   author: string;
@@ -110,12 +114,33 @@ export function ReplyEditor({
     readDefaultSignatureIndex(ownerKey),
     [],
   ));
+  const [pendingDraft, setPendingDraft] = useState<StoredReplyDraft | null>(null);
+  const [draftCheckComplete, setDraftCheckComplete] = useState(false);
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
   const appliedQuoteRequestRef = useRef(0);
   const lastAutoSaveAttemptRef = useRef<string | null>(null);
   const currentDraftSnapshot = getReplyDraftSnapshot(editorValue, signatureIndex, attachments);
 
   useEffect(() => {
-    if (!quoteRequest || appliedQuoteRequestRef.current === quoteRequest.requestId) return;
+    let active = true;
+    void readStoredReplyDraftForThread(bid, tid, ownerKey)
+      .catch(() => null)
+      .then((draft) => {
+        if (!active) return;
+        setPendingDraft(draft);
+        setDraftCheckComplete(true);
+      });
+    return () => { active = false; };
+  }, [bid, ownerKey, tid]);
+
+  const draftDecisionPending = !draftCheckComplete || pendingDraft !== null;
+
+  useEffect(() => {
+    if (
+      draftDecisionPending
+      || !quoteRequest
+      || appliedQuoteRequestRef.current === quoteRequest.requestId
+    ) return;
     appliedQuoteRequestRef.current = quoteRequest.requestId;
 
     if (quoteRequest.image) {
@@ -127,7 +152,7 @@ export function ReplyEditor({
     setFocusRequest((request) => request + 1);
     setStatus("");
     setStatusIsError(false);
-  }, [quoteRequest]);
+  }, [draftDecisionPending, quoteRequest]);
 
   useEffect(() => {
     if (
@@ -151,6 +176,45 @@ export function ReplyEditor({
     isUploadingAttachments,
     savedDraftSnapshot,
   ]);
+
+  function restorePendingDraft() {
+    if (!pendingDraft) return;
+    const restoredSignatureIndex = pendingDraft.signatureIndex ?? signatureIndex;
+    const restoredAttachments = pendingDraft.attachments.map((attachment) => ({ ...attachment, restored: true }));
+    setEditorValue(pendingDraft.editor);
+    setSignatureIndex(restoredSignatureIndex);
+    setAttachments(restoredAttachments);
+    setSavedDraftId(pendingDraft.id);
+    setSavedDraftSnapshot(getReplyDraftSnapshot(pendingDraft.editor, restoredSignatureIndex, restoredAttachments));
+    setPendingDraft(null);
+    setFocusRequest((request) => request + 1);
+    setStatus("已恢复草稿");
+    setStatusIsError(false);
+  }
+
+  async function removePendingDraft() {
+    if (!pendingDraft || isDeletingDraft) return;
+    if (!(await confirm({
+      cancelLabel: "取消",
+      confirmLabel: "删除",
+      danger: true,
+      message: "删除后无法恢复。",
+      title: "删除草稿",
+    }))) return;
+
+    setIsDeletingDraft(true);
+    try {
+      await deleteStoredReplyDraftForThread(bid, tid, ownerKey);
+      setPendingDraft(null);
+      setStatus("");
+      setStatusIsError(false);
+    } catch {
+      setStatus("草稿删除失败，请稍后重试");
+      setStatusIsError(true);
+    } finally {
+      setIsDeletingDraft(false);
+    }
+  }
 
   function updateEditorValue(nextValue: RichTextEditorValue) {
     setEditorValue(nextValue);
@@ -309,6 +373,41 @@ export function ReplyEditor({
     setPreviewOpen(true);
     setStatus("");
     setStatusIsError(false);
+  }
+
+  if (!draftCheckComplete) {
+    return <LoadingState className="thread-reply-loading" label="正在准备回复编辑器" variant="panel" />;
+  }
+
+  if (pendingDraft) {
+    return (
+      <>
+        <section
+          aria-labelledby="reply-editor-title"
+          className="forum-card reply-editor reply-draft-restore"
+          id="reply-editor"
+          ref={editorRef}
+        >
+          <header className="reply-editor-heading">
+            <h2 id="reply-editor-title">回复草稿</h2>
+            <p>{formatPostEditorPreviewTimestamp(new Date(pendingDraft.updatedAt))}</p>
+          </header>
+          <p className="reply-draft-restore-excerpt">{pendingDraft.excerpt}</p>
+          {statusIsError && status && <p className="reply-draft-restore-status" role="alert">{status}</p>}
+          <div className="reply-draft-restore-actions">
+            <Button disabled={isDeletingDraft} onClick={() => void removePendingDraft()} variant="danger">
+              {isDeletingDraft ? <LoaderCircle size={15} /> : <Trash2 size={15} />}
+              删除草稿
+            </Button>
+            <Button disabled={isDeletingDraft} onClick={restorePendingDraft} variant="primary">
+              <RotateCcw size={15} />
+              恢复草稿
+            </Button>
+          </div>
+        </section>
+        {confirmDialog}
+      </>
+    );
   }
 
   return (
