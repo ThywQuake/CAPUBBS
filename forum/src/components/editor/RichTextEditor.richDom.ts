@@ -10,6 +10,10 @@ const richToggleCommands = [
   'strikeThrough',
   'superscript',
   'subscript',
+  'justifyLeft',
+  'justifyCenter',
+  'justifyRight',
+  'justifyFull',
 ] as const;
 
 type RichToggleCommand = typeof richToggleCommands[number];
@@ -51,6 +55,10 @@ export function createInactiveRichCommandStates(): RichToggleCommandStates {
     bold: false,
     firstLineIndent: false,
     italic: false,
+    justifyCenter: false,
+    justifyFull: false,
+    justifyLeft: false,
+    justifyRight: false,
     strikeThrough: false,
     subscript: false,
     superscript: false,

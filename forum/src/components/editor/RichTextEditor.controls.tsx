@@ -1,9 +1,11 @@
 import {
-  AlignCenter, AlignJustify, AlignLeft, AlignRight, AtSign, Bold, Eraser,
+  AlignCenter, AlignJustify, AlignLeft, AlignRight, AtSign, Bold, ChevronDown, Eraser,
   Images as GalleryIcon, Image as ImageIcon, IndentDecrease, IndentIncrease,
   Italic, Link2, List, ListOrdered, MessageSquareQuote, Minus, Palette, Paperclip,
   Strikethrough, Subscript, Superscript, TextInitial, Underline,
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   ChangeEventHandler, Dispatch, FormEventHandler, MouseEventHandler,
   ReactNode, RefObject, SetStateAction,
@@ -207,18 +209,11 @@ export function RichTextEditorControls(props: Props) {
               <ToolbarButton active={activeRichCommands.firstLineIndent} label="首行缩进" onMouseDown={handleToolbarMouseDown} onClick={toggleRichFirstLineIndent}>
                 <TextInitial size={14} />
               </ToolbarButton>
-              <ToolbarButton label="左对齐" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('justifyLeft')}>
-                <AlignLeft size={14} />
-              </ToolbarButton>
-              <ToolbarButton label="居中" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('justifyCenter')}>
-                <AlignCenter size={14} />
-              </ToolbarButton>
-              <ToolbarButton label="右对齐" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('justifyRight')}>
-                <AlignRight size={14} />
-              </ToolbarButton>
-              <ToolbarButton label="两端对齐" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('justifyFull')}>
-                <AlignJustify size={14} />
-              </ToolbarButton>
+              <ToolbarAlignMenu
+                activeRichCommands={activeRichCommands}
+                onMouseDown={handleToolbarMouseDown}
+                onSelect={(command) => runRichCommand(command)}
+              />
               <ToolbarButton label="无序列表" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('insertUnorderedList')}>
                 <List size={14} />
               </ToolbarButton>
@@ -472,6 +467,121 @@ function ToolbarButton({
     >
       {children}
     </button>
+  );
+}
+
+const alignOptions = [
+  { command: 'justifyLeft', label: '左对齐', Icon: AlignLeft },
+  { command: 'justifyCenter', label: '居中', Icon: AlignCenter },
+  { command: 'justifyRight', label: '右对齐', Icon: AlignRight },
+  { command: 'justifyFull', label: '两端对齐', Icon: AlignJustify },
+] as const;
+
+type AlignCommand = typeof alignOptions[number]['command'];
+
+function ToolbarAlignMenu({
+  activeRichCommands,
+  onMouseDown,
+  onSelect,
+}: {
+  activeRichCommands: RichToggleCommandStates;
+  onMouseDown: MouseEventHandler<HTMLButtonElement>;
+  onSelect: (command: AlignCommand) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const activeOption = alignOptions.find((option) => activeRichCommands[option.command]);
+  const TriggerIcon = activeOption?.Icon ?? AlignLeft;
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const updatePosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (rect) setPosition({ left: rect.left, top: rect.bottom + 4 });
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setIsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setIsOpen(false);
+      triggerRef.current?.focus();
+    };
+
+    updatePosition();
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label="对齐方式"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        data-toolbar-tooltip={isOpen ? undefined : '对齐方式'}
+        onMouseDown={onMouseDown}
+        onClick={() => setIsOpen((open) => !open)}
+        className={`flex h-6 shrink-0 items-center gap-px rounded-[var(--control-radius)] border px-1 text-[#174f38] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:text-white ${
+          isOpen
+            ? 'border-[#174f38]/30 bg-[#174f38]/10 dark:border-emerald-200/30 dark:bg-emerald-200/15'
+            : 'border-transparent hover:border-zinc-200 hover:bg-zinc-100 dark:hover:border-white/10 dark:hover:bg-white/[0.1]'
+        }`}
+      >
+        <TriggerIcon size={14} />
+        <ChevronDown size={10} />
+      </button>
+      {isOpen && position ? createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="对齐方式"
+          className="fixed z-[1100] grid min-w-[7.5rem] gap-px rounded-[var(--card-radius)] border border-zinc-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-900"
+          style={{ left: position.left, top: position.top }}
+        >
+          {alignOptions.map(({ command, label, Icon }) => {
+            const isActive = activeRichCommands[command];
+            return (
+              <button
+                key={command}
+                type="button"
+                role="menuitemradio"
+                aria-checked={isActive}
+                onMouseDown={onMouseDown}
+                onClick={() => {
+                  onSelect(command);
+                  setIsOpen(false);
+                }}
+                className={`flex h-7 items-center gap-2 rounded-[var(--control-radius)] px-2 text-left text-[length:var(--ui-font-size-md)] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] ${
+                  isActive
+                    ? 'bg-[#174f38]/10 text-[#174f38] dark:bg-emerald-200/15 dark:text-emerald-100'
+                    : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10'
+                }`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            );
+          })}
+        </div>,
+        document.body,
+      ) : null}
+    </>
   );
 }
 
