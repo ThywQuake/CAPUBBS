@@ -86,7 +86,7 @@ export function ProfilePersonalizationDialog({
   function setMedalState(medalId: string, state: MedalDisplayState) {
     setDisplayMedalIds((current) => {
       const withoutMedal = current.filter((id) => id !== medalId);
-      return state === 'display' && withoutMedal.length < 3 ? [...withoutMedal, medalId] : withoutMedal;
+      return state === 'display' && withoutMedal.length < 5 ? [...withoutMedal, medalId] : withoutMedal;
     });
     setHiddenMedalIds((current) => {
       const withoutMedal = current.filter((id) => id !== medalId);
@@ -227,7 +227,7 @@ export function ProfilePersonalizationDialog({
               <div className="profile-personalization-medal-heading">
                 <h3 id="profile-personalization-medals-title">勋章</h3>
                 <p>
-                  可以最多选择 3 枚勋章在楼层中展示，可选任意枚勋章进行隐藏。
+                  可以最多选择 5 枚勋章在楼层中展示，可选任意枚勋章进行隐藏。
                 </p>
               </div>
               <div className="profile-medal-preference-list" ref={medalsRef}>
@@ -256,7 +256,7 @@ export function ProfilePersonalizationDialog({
                                 saving ||
                                 (option === "display" &&
                                   state !== "display" &&
-                                  displayMedalIds.length >= 3)
+                                  displayMedalIds.length >= 5)
                               }
                               key={option}
                               onClick={() => setMedalState(medal.id, option)}
