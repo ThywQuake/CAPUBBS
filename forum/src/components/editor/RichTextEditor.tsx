@@ -1,7 +1,7 @@
 import { expandGalleryTags } from '../../utils/galleryTag';
 import { observeEditorImageLoading } from './RichTextEditor.imageLoading';
 import { DialogPresence } from '../layout/DialogPresence';
-import { Braces, PanelRightOpen, X } from 'lucide-react';
+import { Braces, PanelRightOpen, SquarePen, X } from 'lucide-react';
 import {
   useEffect,
   useImperativeHandle,
@@ -16,6 +16,8 @@ import { getPublicProfileAppPath } from '../../utils/userRoutes';
 import { PastedImageDialog } from './PastedImageDialog';
 import { GalleryDialog } from './GalleryDialog';
 import { HtmlSnippetDialog } from './HtmlSnippetDialog';
+import { TableDialog } from './TableDialog';
+import { useRichTextEditorTables } from './RichTextEditor.tableActions';
 import { RichTextEditorControls } from './RichTextEditor.controls';
 import { escapeMarkdownLinkText, hasModeSwitchingContent, plainTextLength } from './RichTextEditor.content';
 import {
@@ -560,6 +562,27 @@ export function RichTextEditor({
     updateContent,
   });
 
+  const {
+    closeTableDialog,
+    editActiveTable,
+    openTableDialog,
+    saveTable,
+    tableDialogState,
+    tableEditButton,
+    updateTableEditButton,
+  } = useRichTextEditorTables({
+    closeMenus: () => {
+      setActivePopover(null);
+      setIsColorPickerOpen(false);
+    },
+    editorRef,
+    editorShellRef,
+    insertRichHtml,
+    isSourceMode,
+    saveSelection,
+    updateContent,
+  });
+
   const hasRichImageSelection = richImageResizeHandle !== null;
   useEffect(() => {
     const editor = editorRef.current;
@@ -793,6 +816,7 @@ export function RichTextEditor({
         isSourceMode={isSourceMode}
         onOpenAttachments={onOpenAttachments}
         openGalleryDialog={openGalleryDialog}
+        openTableDialog={openTableDialog}
         openPopover={openPopover}
         openQuotePopover={openQuotePopover}
         popoverConfig={popoverConfig}
@@ -940,7 +964,10 @@ export function RichTextEditor({
           onPointerDown={handleGalleryResizePointerDown}
           onPointerMove={handleGalleryResizePointerMove}
           onPointerUp={finishGalleryResize}
-          onScroll={updateRichImageResizeHandle}
+          onScroll={() => {
+            updateRichImageResizeHandle();
+            updateTableEditButton();
+          }}
           className={`forum-markup capubbs-editor-prose capubbs-rich-editor-input px-3 py-3 outline-none ${isAutoHeightEnabled ? 'min-h-[50vh] overflow-visible' : 'h-[50vh] overflow-y-auto'}`}
           data-forum-markup="floor"
         />
@@ -962,6 +989,23 @@ export function RichTextEditor({
           }}
         >
           <span className={`h-2.5 w-2.5 border-b-2 ${richImageResizeHandle.wrap === 'right' ? 'border-l-2' : 'border-r-2'} border-[#174f38] dark:border-emerald-200`} />
+        </button>
+      ) : null}
+
+      {tableEditButton && !isSourceMode ? (
+        <button
+          type="button"
+          aria-label="编辑表格"
+          title="编辑表格"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={editActiveTable}
+          className="absolute z-20 flex h-7 w-7 -translate-x-full items-center justify-center rounded-[1px] border border-[#174f38] bg-white text-[#174f38] shadow-md transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:border-emerald-200 dark:bg-zinc-950 dark:text-emerald-200"
+          style={{
+            left: `${tableEditButton.left}px`,
+            top: `${tableEditButton.top}px`,
+          }}
+        >
+          <SquarePen size={14} />
         </button>
       ) : null}
 
@@ -1038,6 +1082,13 @@ export function RichTextEditor({
         initialTitle={galleryDialogState.title}
         onCancel={() => setGalleryDialogState(null)}
         onInsert={uploadAndInsertGallery}
+      />
+    ) : null}</DialogPresence>
+    <DialogPresence>{tableDialogState ? (
+      <TableDialog
+        onCancel={closeTableDialog}
+        onSave={saveTable}
+        sourceTable={tableDialogState.target}
       />
     ) : null}</DialogPresence>
     <DialogPresence>{isHtmlSnippetDialogOpen ? (

@@ -1,0 +1,96 @@
+@layer components {
+  .table-dialog {
+    width: min(960px, 100%);
+  }
+
+  .table-dialog-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .table-dialog-tool-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .table-dialog-tool-group > span {
+    margin-right: 4px;
+    color: var(--text-muted);
+    font-size: var(--ui-font-size-md);
+    font-weight: 760;
+  }
+
+  .table-dialog-tool-group > button {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border: 0;
+    border-radius: var(--control-radius);
+    background: transparent;
+    color: var(--text-muted);
+    transition: 150ms ease;
+  }
+
+  .table-dialog-tool-group > button:hover:not(:disabled) {
+    background: var(--surface-soft);
+    color: var(--text-strong);
+  }
+
+  .table-dialog-tool-group > button.is-danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+  }
+
+  .table-dialog-body {
+    overflow-x: auto;
+  }
+
+  .table-dialog-grid {
+    min-width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .table-dialog-grid td {
+    min-width: 96px;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    vertical-align: top;
+  }
+
+  .table-dialog-grid td.is-selected {
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    box-shadow: inset 0 0 0 1px var(--brand);
+  }
+
+  .table-dialog-grid textarea {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 38px;
+    resize: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text-strong);
+    field-sizing: content;
+    font-size: var(--ui-font-size-lg);
+    line-height: 1.5;
+    padding: 8px 10px;
+  }
+
+  .table-dialog-grid textarea:focus {
+    box-shadow: inset 0 0 0 2px var(--brand);
+  }
+
+  .table-dialog button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}

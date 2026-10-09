@@ -2,7 +2,7 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, AtSign, Bold, ChevronDown, Eraser,
   Images as GalleryIcon, Image as ImageIcon, IndentDecrease, IndentIncrease,
   Italic, Link2, List, ListOrdered, MessageSquareQuote, Minus, Palette, Paperclip,
-  Strikethrough, Subscript, Superscript, TextInitial, Underline,
+  Strikethrough, Subscript, Superscript, Table, TextInitial, Underline,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -50,6 +50,7 @@ type Props = {
   isSourceMode: boolean;
   onOpenAttachments?: () => void;
   openGalleryDialog: () => void;
+  openTableDialog: () => void;
   openPopover: (popover: Exclude<EditorPopover, null>) => void;
   openQuotePopover: () => void;
   popoverConfig: { label: string; placeholder: string } | null;
@@ -78,7 +79,7 @@ export function RichTextEditorControls(props: Props) {
     handleToolbarMouseDown, headingSelectValue, hexSourceValue, imageFileError,
     imageFileInputRef, isCheckingImageFile, isColorPickerOpen, isSourceMode,
     insertHorizontalRule, onOpenAttachments,
-    openGalleryDialog, openPopover, openQuotePopover, popoverConfig, popoverTextValue, popoverValue,
+    openGalleryDialog, openTableDialog, openPopover, openQuotePopover, popoverConfig, popoverTextValue, popoverValue,
     recentTextColors, runRichCommand, saveSelection, selectedTextColor,
     selectedImageWrap, setRichImageWrap,
     selectedImageTextAlign, setRichImageTextAlign,
@@ -256,6 +257,9 @@ export function RichTextEditorControls(props: Props) {
               </ToolbarButton>
               <ToolbarButton label="插入图廊" onMouseDown={handleToolbarMouseDown} onClick={openGalleryDialog}>
                 <GalleryIcon size={14} />
+              </ToolbarButton>
+              <ToolbarButton label="插入表格" onMouseDown={handleToolbarMouseDown} onClick={openTableDialog}>
+                <Table size={14} />
               </ToolbarButton>
               {attachmentButton}
 
