@@ -187,16 +187,13 @@
   max-height: calc(100dvh - 36px);
 }
 
+/* Vertical scrolling only: sideways scrolling stays in .forum-table-scroll, as on the floor. */
 .forum-table-dialog .forum-table-dialog-body {
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   padding: 16px;
-}
-
-.forum-table-dialog .forum-table-dialog-body:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: -2px;
 }
 
 .forum-table-dialog .forum-table-cell-content {

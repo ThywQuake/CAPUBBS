@@ -74,27 +74,31 @@ export function prepareForumTables(container: HTMLElement) {
       viewport.append(scrollContainer);
     }
     if (!viewport.querySelector(':scope > .forum-table-expand')) viewport.append(createExpandButton(table.ownerDocument));
-    const tableViewport = viewport;
-    const syncScroll = () => {
-      scrollContainer.classList.toggle('forum-table-scrolled', scrollContainer.scrollLeft > 0);
-      tableViewport.classList.toggle(
-        'forum-table-more-right',
-        scrollContainer.scrollWidth - scrollContainer.clientWidth - scrollContainer.scrollLeft > 1,
-      );
-    };
-    syncScroll();
-    scrollContainer.addEventListener('scroll', syncScroll, { passive: true });
-    const view = table.ownerDocument.defaultView;
-    const observer = view?.ResizeObserver ? new view.ResizeObserver(syncScroll) : null;
-    observer?.observe(scrollContainer);
-    observer?.observe(table);
-    view?.addEventListener('resize', syncScroll);
-    cleanups.push(() => {
-      scrollContainer.removeEventListener('scroll', syncScroll);
-      observer?.disconnect();
-      view?.removeEventListener('resize', syncScroll);
-    });
+    cleanups.push(trackForumTableScroll(viewport, scrollContainer, table));
   });
 
   return () => cleanups.forEach((cleanup) => cleanup());
+}
+
+/** Toggle the first-column and right-edge shadows as a table scrolls sideways. */
+export function trackForumTableScroll(viewport: HTMLElement, scrollContainer: HTMLElement, table: HTMLTableElement) {
+  const syncScroll = () => {
+    scrollContainer.classList.toggle('forum-table-scrolled', scrollContainer.scrollLeft > 0);
+    viewport.classList.toggle(
+      'forum-table-more-right',
+      scrollContainer.scrollWidth - scrollContainer.clientWidth - scrollContainer.scrollLeft > 1,
+    );
+  };
+  syncScroll();
+  scrollContainer.addEventListener('scroll', syncScroll, { passive: true });
+  const view = table.ownerDocument.defaultView;
+  const observer = view?.ResizeObserver ? new view.ResizeObserver(syncScroll) : null;
+  observer?.observe(scrollContainer);
+  observer?.observe(table);
+  view?.addEventListener('resize', syncScroll);
+  return () => {
+    scrollContainer.removeEventListener('scroll', syncScroll);
+    observer?.disconnect();
+    view?.removeEventListener('resize', syncScroll);
+  };
 }
