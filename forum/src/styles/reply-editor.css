@@ -19,6 +19,23 @@
     margin-top: var(--space-18);
   }
 
+  .reply-editor-overlaid {
+    position: relative;
+  }
+
+  .reply-editor-overlaid > :not(.reply-draft-restore) {
+    visibility: hidden;
+  }
+
+  .reply-draft-restore {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
   .reply-draft-restore-excerpt {
     display: -webkit-box;
     margin: 0 var(--space-20);
@@ -39,6 +56,7 @@
 
   .reply-draft-restore-actions {
     display: flex;
+    margin-top: auto;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-8);
