@@ -6,9 +6,10 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { LucideIcon } from 'lucide-react';
 import type {
-  ChangeEventHandler, Dispatch, FormEventHandler, MouseEventHandler,
-  ReactNode, RefObject, SetStateAction,
+  ChangeEventHandler, CSSProperties, Dispatch, FormEventHandler, KeyboardEvent,
+  MouseEventHandler, ReactNode, RefObject, SetStateAction,
 } from 'react';
 import {
   defaultTextColor, richTextFontOptions, richTextFontSizeOptions, richTextHeadingOptions,
@@ -35,9 +36,9 @@ type Props = {
   handleHexSourceChange: (value: string) => void;
   handleLocalImageFileChange: ChangeEventHandler<HTMLInputElement>;
   handlePopoverSubmit: FormEventHandler<HTMLFormElement>;
-  handleRichFontChange: ChangeEventHandler<HTMLSelectElement>;
-  handleRichFontSizeChange: ChangeEventHandler<HTMLSelectElement>;
-  handleRichHeadingChange: ChangeEventHandler<HTMLSelectElement>;
+  handleRichFontChange: (value: string) => void;
+  handleRichFontSizeChange: (value: string) => void;
+  handleRichHeadingChange: (value: string) => void;
   handleToolbarMouseDown: MouseEventHandler<HTMLButtonElement>;
   headingSelectValue: string;
   hexSourceValue: string;
@@ -85,6 +86,7 @@ export function RichTextEditorControls(props: Props) {
     toggleColorPicker, toggleRichFirstLineIndent,
   } = props;
   const toolbarTooltip = useToolbarTooltip();
+  const ActiveAlignIcon = alignOptions.find((option) => activeRichCommands[option.value])?.icon ?? AlignLeft;
 
   const attachmentButton = onOpenAttachments ? (
     <ToolbarButton label="添加附件" onMouseDown={handleToolbarMouseDown} onClick={onOpenAttachments}>
@@ -130,50 +132,30 @@ export function RichTextEditorControls(props: Props) {
 
               <ToolbarDivider />
 
-              <label className="flex h-6 items-center rounded-[var(--control-radius)] border border-zinc-200 bg-white px-1 dark:border-white/10 dark:bg-zinc-950" data-toolbar-tooltip="字体">
-                <span className="sr-only">字体</span>
-                <select
-                  value={fontSelectValue}
-                  onMouseDown={saveSelection}
-                  onFocus={saveSelection}
-                  onChange={handleRichFontChange}
-                  className="h-5 w-16 border-0 bg-transparent px-0 text-[length:var(--ui-font-size-md)] font-medium text-zinc-700 outline-none dark:text-zinc-200"
-                  aria-label="字体"
-                >
-                  <option value="">字体</option>
-                  {fontSelectValue && !richTextFontOptions.some((option) => option.value === fontSelectValue) ? (
-                    <option value={fontSelectValue}>
-                      {fontSelectValue.split(',')[0].trim().replace(/^['"]|['"]$/g, '')}
-                    </option>
-                  ) : null}
-                  {richTextFontOptions.map((fontOption) => (
-                    <option key={fontOption.value} value={fontOption.value}>
-                      {fontOption.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex h-6 items-center rounded-[var(--control-radius)] border border-zinc-200 bg-white px-1 dark:border-white/10 dark:bg-zinc-950" data-toolbar-tooltip="字号">
-                <span className="sr-only">字号</span>
-                <select
-                  value={fontSizeSelectValue}
-                  onMouseDown={saveSelection}
-                  onFocus={saveSelection}
-                  onChange={handleRichFontSizeChange}
-                  className="h-5 w-12 border-0 bg-transparent px-0 text-[length:var(--ui-font-size-md)] font-medium text-zinc-700 outline-none dark:text-zinc-200"
-                  aria-label="字号"
-                >
-                  <option value="">字号</option>
-                  {fontSizeSelectValue && !richTextFontSizeOptions.some((option) => option.value === fontSizeSelectValue) ? (
-                    <option value={fontSizeSelectValue}>{fontSizeSelectValue.replace(/px$/, '')}</option>
-                  ) : null}
-                  {richTextFontSizeOptions.map((fontSizeOption) => (
-                    <option key={fontSizeOption.value} value={fontSizeOption.value}>
-                      {fontSizeOption.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ToolbarMenu
+                label="字体"
+                onOpen={saveSelection}
+                onSelect={handleRichFontChange}
+                onTriggerMouseDown={handleToolbarMouseDown}
+                options={richTextFontOptions.map((option) => ({ ...option, style: { fontFamily: option.value } }))}
+                triggerClassName="w-16"
+                value={fontSelectValue}
+              >
+                {richTextFontOptions.find((option) => option.value === fontSelectValue)?.label
+                  ?? (fontSelectValue ? fontSelectValue.split(',')[0].trim().replace(/^['"]|['"]$/g, '') : '字体')}
+              </ToolbarMenu>
+              <ToolbarMenu
+                label="字号"
+                onOpen={saveSelection}
+                onSelect={handleRichFontSizeChange}
+                onTriggerMouseDown={handleToolbarMouseDown}
+                options={richTextFontSizeOptions}
+                triggerClassName="w-11"
+                value={fontSizeSelectValue}
+              >
+                {richTextFontSizeOptions.find((option) => option.value === fontSizeSelectValue)?.label
+                  ?? (fontSizeSelectValue ? fontSizeSelectValue.replace(/px$/, '') : '字号')}
+              </ToolbarMenu>
 
               <ToolbarDivider />
 
@@ -183,23 +165,17 @@ export function RichTextEditorControls(props: Props) {
               <ToolbarButton active={activeRichCommands.subscript} label="下标" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('subscript')}>
                 <Subscript size={14} />
               </ToolbarButton>
-              <label className="flex h-6 items-center rounded-[var(--control-radius)] border border-zinc-200 bg-white px-1 dark:border-white/10 dark:bg-zinc-950" data-toolbar-tooltip="标题格式">
-                <span className="sr-only">标题格式</span>
-                <select
-                  value={headingSelectValue}
-                  onMouseDown={saveSelection}
-                  onFocus={saveSelection}
-                  onChange={handleRichHeadingChange}
-                  className="h-5 w-16 border-0 bg-transparent px-0 text-[length:var(--ui-font-size-md)] font-medium text-zinc-700 outline-none dark:text-zinc-200"
-                  aria-label="标题格式"
-                >
-                  {richTextHeadingOptions.map((headingOption) => (
-                    <option key={headingOption.value} value={headingOption.value}>
-                      {headingOption.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ToolbarMenu
+                label="标题格式"
+                onOpen={saveSelection}
+                onSelect={handleRichHeadingChange}
+                onTriggerMouseDown={handleToolbarMouseDown}
+                options={richTextHeadingOptions}
+                triggerClassName="w-16"
+                value={headingSelectValue}
+              >
+                {richTextHeadingOptions.find((option) => option.value === headingSelectValue)?.label ?? '正文'}
+              </ToolbarMenu>
               <ToolbarButton active={activePopover === 'quote'} label="引用" onMouseDown={handleToolbarMouseDown} onClick={openQuotePopover}>
                 <MessageSquareQuote size={14} />
               </ToolbarButton>
@@ -209,11 +185,15 @@ export function RichTextEditorControls(props: Props) {
               <ToolbarButton active={activeRichCommands.firstLineIndent} label="首行缩进" onMouseDown={handleToolbarMouseDown} onClick={toggleRichFirstLineIndent}>
                 <TextInitial size={14} />
               </ToolbarButton>
-              <ToolbarAlignMenu
-                activeRichCommands={activeRichCommands}
-                onMouseDown={handleToolbarMouseDown}
+              <ToolbarMenu
+                label="对齐方式"
                 onSelect={(command) => runRichCommand(command)}
-              />
+                onTriggerMouseDown={handleToolbarMouseDown}
+                options={alignOptions}
+                value={alignOptions.find((option) => activeRichCommands[option.value])?.value ?? ''}
+              >
+                <ActiveAlignIcon size={14} />
+              </ToolbarMenu>
               <ToolbarButton label="无序列表" onMouseDown={handleToolbarMouseDown} onClick={() => runRichCommand('insertUnorderedList')}>
                 <List size={14} />
               </ToolbarButton>
@@ -300,19 +280,19 @@ export function RichTextEditorControls(props: Props) {
               </button>
             ))}
             {selectedImageWrap !== 'none' ? (
-              <label className="ml-1 flex h-6 items-center gap-1 text-[length:var(--ui-font-size-md)] text-zinc-600 dark:text-zinc-300">
+              <span className="ml-1 flex h-6 items-center gap-1 text-[length:var(--ui-font-size-md)] text-zinc-600 dark:text-zinc-300">
                 侧边文字
-                <select
-                  aria-label="侧边文字对齐"
+                <ToolbarMenu
+                  label="侧边文字对齐"
+                  onSelect={setRichImageTextAlign}
+                  onTriggerMouseDown={handleToolbarMouseDown}
+                  options={imageTextAlignOptions}
+                  triggerClassName="w-[4.5rem]"
                   value={selectedImageTextAlign}
-                  onChange={(event) => setRichImageTextAlign(event.target.value as RichImageTextAlign)}
-                  className="h-6 rounded-[var(--control-radius)] border border-zinc-200 bg-white px-1 text-[length:var(--ui-font-size-md)] dark:border-white/10 dark:bg-zinc-950"
                 >
-                  <option value="top">顶端对齐</option>
-                  <option value="center">居中对齐</option>
-                  <option value="bottom">底端对齐</option>
-                </select>
-              </label>
+                  {imageTextAlignOptions.find((option) => option.value === selectedImageTextAlign)?.label}
+                </ToolbarMenu>
+              </span>
             ) : null}
           </div>
         ) : null}
@@ -471,110 +451,173 @@ function ToolbarButton({
 }
 
 const alignOptions = [
-  { command: 'justifyLeft', label: '左对齐', Icon: AlignLeft },
-  { command: 'justifyCenter', label: '居中', Icon: AlignCenter },
-  { command: 'justifyRight', label: '右对齐', Icon: AlignRight },
-  { command: 'justifyFull', label: '两端对齐', Icon: AlignJustify },
+  { value: 'justifyLeft', label: '左对齐', icon: AlignLeft },
+  { value: 'justifyCenter', label: '居中', icon: AlignCenter },
+  { value: 'justifyRight', label: '右对齐', icon: AlignRight },
+  { value: 'justifyFull', label: '两端对齐', icon: AlignJustify },
 ] as const;
 
-type AlignCommand = typeof alignOptions[number]['command'];
+const imageTextAlignOptions = [
+  { value: 'top', label: '顶端对齐' },
+  { value: 'center', label: '居中对齐' },
+  { value: 'bottom', label: '底端对齐' },
+] as const;
 
-function ToolbarAlignMenu({
-  activeRichCommands,
-  onMouseDown,
+type ToolbarMenuOption<T extends string> = {
+  icon?: LucideIcon;
+  label: string;
+  style?: CSSProperties;
+  value: T;
+};
+
+function ToolbarMenu<T extends string>({
+  children,
+  label,
+  onOpen,
   onSelect,
+  onTriggerMouseDown,
+  options,
+  triggerClassName = '',
+  value,
 }: {
-  activeRichCommands: RichToggleCommandStates;
-  onMouseDown: MouseEventHandler<HTMLButtonElement>;
-  onSelect: (command: AlignCommand) => void;
+  children: ReactNode;
+  label: string;
+  onOpen?: () => void;
+  onSelect: (value: T) => void;
+  onTriggerMouseDown: MouseEventHandler<HTMLButtonElement>;
+  options: readonly ToolbarMenuOption<T>[];
+  triggerClassName?: string;
+  value: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const activeOption = alignOptions.find((option) => activeRichCommands[option.command]);
-  const TriggerIcon = activeOption?.Icon ?? AlignLeft;
+
+  const closeMenu = () => {
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+  };
+
+  const selectOption = (option: ToolbarMenuOption<T>) => {
+    onSelect(option.value);
+    closeMenu();
+  };
 
   useEffect(() => {
     if (!isOpen) return undefined;
 
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
-      if (rect) setPosition({ left: rect.left, top: rect.bottom + 4 });
+      if (!rect) return;
+      const menuWidth = menuRef.current?.offsetWidth ?? 0;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8));
+      setPosition({ left, top: rect.bottom + 4 });
     };
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setIsOpen(false);
+      closeMenu();
     };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setIsOpen(false);
-      triggerRef.current?.focus();
+    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape' && event.target !== triggerRef.current) closeMenu();
     };
 
     updatePosition();
+    const frame = window.requestAnimationFrame(updatePosition);
     document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleDocumentKeyDown);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
+      window.cancelAnimationFrame(frame);
       document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleDocumentKeyDown);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isOpen]);
+
+  const openMenu = () => {
+    onOpen?.();
+    setHighlightedIndex(options.findIndex((option) => option.value === value));
+    setIsOpen(true);
+  };
+
+  const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (!isOpen) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        openMenu();
+      }
+      return;
+    }
+
+    if (event.key === 'Escape' || event.key === 'Tab') {
+      if (event.key === 'Escape') event.preventDefault();
+      closeMenu();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      setHighlightedIndex((index) => (index + step + options.length) % options.length);
+    } else if ((event.key === 'Enter' || event.key === ' ') && options[highlightedIndex]) {
+      event.preventDefault();
+      selectOption(options[highlightedIndex]);
+    }
+  };
 
   return (
     <>
       <button
         ref={triggerRef}
         type="button"
-        aria-label="对齐方式"
+        aria-label={label}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        data-toolbar-tooltip={isOpen ? undefined : '对齐方式'}
-        onMouseDown={onMouseDown}
-        onClick={() => setIsOpen((open) => !open)}
-        className={`flex h-6 shrink-0 items-center gap-px rounded-[var(--control-radius)] border px-1 text-[#174f38] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:text-white ${
+        data-toolbar-tooltip={isOpen ? undefined : label}
+        onMouseDown={onTriggerMouseDown}
+        onClick={() => (isOpen ? closeMenu() : openMenu())}
+        onKeyDown={handleTriggerKeyDown}
+        className={`flex h-6 shrink-0 items-center justify-between gap-0.5 rounded-[var(--control-radius)] border px-1 text-[length:var(--ui-font-size-md)] font-medium text-[#174f38] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] dark:text-white ${
           isOpen
             ? 'border-[#174f38]/30 bg-[#174f38]/10 dark:border-emerald-200/30 dark:bg-emerald-200/15'
             : 'border-transparent hover:border-zinc-200 hover:bg-zinc-100 dark:hover:border-white/10 dark:hover:bg-white/[0.1]'
-        }`}
+        } ${triggerClassName}`}
       >
-        <TriggerIcon size={14} />
-        <ChevronDown size={10} />
+        <span className="flex min-w-0 items-center truncate">{children}</span>
+        <ChevronDown size={10} className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && position ? createPortal(
         <div
           ref={menuRef}
           role="menu"
-          aria-label="对齐方式"
-          className="fixed z-[1100] grid min-w-[7.5rem] gap-px rounded-[var(--card-radius)] border border-zinc-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-900"
+          aria-label={label}
+          className="fixed z-[1100] grid max-h-[min(20rem,calc(100vh-1rem))] min-w-[7.5rem] gap-px overflow-y-auto rounded-[var(--card-radius)] border border-zinc-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-900"
           style={{ left: position.left, top: position.top }}
         >
-          {alignOptions.map(({ command, label, Icon }) => {
-            const isActive = activeRichCommands[command];
+          {options.map((option, index) => {
+            const isActive = option.value === value;
+            const Icon = option.icon;
             return (
               <button
-                key={command}
+                key={option.value}
                 type="button"
                 role="menuitemradio"
                 aria-checked={isActive}
-                onMouseDown={onMouseDown}
-                onClick={() => {
-                  onSelect(command);
-                  setIsOpen(false);
-                }}
-                className={`flex h-7 items-center gap-2 rounded-[var(--control-radius)] px-2 text-left text-[length:var(--ui-font-size-md)] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174f38] ${
+                tabIndex={-1}
+                onMouseDown={onTriggerMouseDown}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                onClick={() => selectOption(option)}
+                className={`flex h-7 items-center gap-2 rounded-[var(--control-radius)] px-2 text-left text-[length:var(--ui-font-size-md)] font-medium transition ${
                   isActive
                     ? 'bg-[#174f38]/10 text-[#174f38] dark:bg-emerald-200/15 dark:text-emerald-100'
-                    : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10'
-                }`}
+                    : `text-zinc-700 dark:text-zinc-200 ${index === highlightedIndex ? 'bg-zinc-100 dark:bg-white/10' : ''}`
+                } ${isActive && index === highlightedIndex ? 'ring-1 ring-inset ring-[#174f38]/30 dark:ring-emerald-200/30' : ''}`}
+                style={option.style}
               >
-                <Icon size={14} />
-                {label}
+                {Icon ? <Icon size={14} /> : null}
+                {option.label}
               </button>
             );
           })}

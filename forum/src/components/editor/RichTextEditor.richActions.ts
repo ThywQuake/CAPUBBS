@@ -1,4 +1,4 @@
-import type { ChangeEvent, Dispatch, RefObject, SetStateAction } from 'react';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { richTextHeadingOptions } from './RichTextEditor.constants';
 import {
   maxRecentTextColors, mergeFullySelectedChildRichSpansIntoWrapper,
@@ -125,9 +125,7 @@ export function createRichTextEditorRichActions({
     savedRangeRef.current = null;
   };
 
-  const handleRichFontChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const fontName = event.target.value;
-
+  const handleRichFontChange = (fontName: string) => {
     if (!fontName) {
       return;
     }
@@ -135,9 +133,7 @@ export function createRichTextEditorRichActions({
     applyRichInlineStyle({ fontFamily: fontName });
   };
 
-  const handleRichFontSizeChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const fontSize = event.target.value;
-
+  const handleRichFontSizeChange = (fontSize: string) => {
     if (!fontSize) {
       return;
     }
@@ -145,9 +141,7 @@ export function createRichTextEditorRichActions({
     applyRichInlineStyle({ fontSize });
   };
 
-  const handleRichHeadingChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const headingTag = event.target.value;
-
+  const handleRichHeadingChange = (headingTag: string) => {
     if (!richTextHeadingOptions.some((option) => option.value === headingTag)) {
       return;
     }
