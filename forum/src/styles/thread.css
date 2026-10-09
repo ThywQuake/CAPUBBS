@@ -1278,8 +1278,7 @@
   }
 
   .thread-floor-author > .user-displayed-tag-list {
-    max-width: 144px;
-    flex: 0 1 auto;
+    flex: 0 0 auto;
   }
 
   .thread-floor-time {

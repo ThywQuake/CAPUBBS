@@ -53,7 +53,7 @@
     display: flex;
     max-width: 100%;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: var(--space-4);
   }
 
