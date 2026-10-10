@@ -55,6 +55,7 @@
     "d3-force": "3.0.0",
     "lucide-react": "^0.561.0",
     "markdown-it": "^15.0.1",
+    "nprogress": "^0.2.0",
     "papaparse": "^5.5.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -63,6 +64,7 @@
   "devDependencies": {
     "@types/d3-force": "3.0.10",
     "@types/node": "^24.0.0",
+    "@types/nprogress": "^0.2.3",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { beginPageProgress } from '../../utils/pageProgress';
 import { AppBackground } from './AppBackground';
 import { LoadingSpinner } from './LoadingSpinner';
 import { TopBar } from './TopBar';
@@ -11,18 +13,26 @@ type LoadingStateProps = {
 };
 
 export function LoadingState({ ariaLabel, className = '', id, label, variant = 'page' }: LoadingStateProps) {
-  const variantClassName = variant === 'page'
-    ? 'forum-loading-state-page'
-    : 'forum-loading-state-panel';
-  const classes = `forum-loading-state forum-card forum-loading-state-card ${variantClassName}${className ? ` ${className}` : ''}`;
+  if (variant === 'page') return <PageProgress ariaLabel={ariaLabel} id={id} label={label} />;
+
+  const classes = `forum-loading-state forum-card forum-loading-state-card forum-loading-state-panel${className ? ` ${className}` : ''}`;
 
   return (
     <section aria-busy="true" aria-label={ariaLabel} aria-live="polite" className={classes} id={id} role="status">
       <span aria-hidden="true" className="forum-loading-visual">
-        <LoadingSpinner size={variant === 'page' ? 40 : 34} />
+        <LoadingSpinner size={34} />
       </span>
-      {variant === 'page' ? <h1>{label}</h1> : <p>{label}</p>}
+      <p>{label}</p>
     </section>
+  );
+}
+
+// Full-page waits show the top progress bar instead of a centered spinner card.
+export function PageProgress({ ariaLabel, id, label }: { ariaLabel?: string; id?: string; label: string }) {
+  useEffect(() => beginPageProgress(), []);
+
+  return (
+    <span aria-label={ariaLabel} aria-live="polite" className="sr-only" id={id} role="status">{label}</span>
   );
 }
 
@@ -31,9 +41,7 @@ export function RouteLoadingPage({ label = '正在打开页面' }: { label?: str
     <div className="forum-route-loading-page relative text-[var(--text)] transition-colors duration-200">
       <AppBackground />
       <TopBar />
-      <main className="forum-route-loading-shell">
-        <LoadingState label={label} />
-      </main>
+      <PageProgress label={label} />
     </div>
   );
 }

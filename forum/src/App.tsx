@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { BrowserRecommendationDialog } from './components/browser/BrowserRecommendationDialog';
 import { OfflineNotice } from './components/OfflineNotice';
 import { AppBackground } from './components/layout/AppBackground';
-import { LoadingState, RouteLoadingPage } from './components/layout/LoadingState';
+import { PageProgress, RouteLoadingPage } from './components/layout/LoadingState';
 import { TopBar } from './components/layout/TopBar';
 import { useForumContentFontSize } from './hooks/useForumContentFontSize';
 import { HomePage } from './pages/HomePage';
@@ -284,7 +284,7 @@ function DataDisplayRouteLoading() {
       <AppBackground />
       <TopBar contextHref="#data-display" contextTitle="数据展示" />
       <main className="data-display-shell" id="data-display">
-        <LoadingState className="data-display-state" label="正在打开数据展示" variant="panel" />
+        <PageProgress label="正在打开数据展示" />
       </main>
     </div>
   );
@@ -296,7 +296,7 @@ function ArchiveRoomRouteLoading() {
       <AppBackground />
       <TopBar contextHref="#archive-room-title" contextTitle="档案室" />
       <main className="archive-room-shell" id="archive-room-title">
-        <LoadingState label="正在打开档案室" variant="panel" />
+        <PageProgress label="正在打开档案室" />
       </main>
     </div>
   );

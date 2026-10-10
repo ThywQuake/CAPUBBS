@@ -9,11 +9,6 @@
     text-align: center;
   }
 
-  .forum-loading-state-page {
-    min-height: clamp(260px, 52vh, 440px);
-    padding: var(--space-40) var(--space-24);
-  }
-
   .forum-loading-state-panel {
     min-height: 220px;
     padding: var(--space-32) var(--space-20);
@@ -27,7 +22,6 @@
     color: var(--text-faint);
   }
 
-  .forum-loading-state h1,
   .forum-loading-state p {
     margin: 0;
     color: var(--text-strong);
@@ -50,38 +44,8 @@
     color: var(--text);
   }
 
-  .forum-route-loading-shell {
-    width: min(1080px, calc(100% - 40px));
-    margin-inline: auto;
-    padding-top: calc(var(--topbar-height) + 18px);
-  }
-
-  .profile-page-shell:has(> .forum-loading-state-page),
-  .management-shell:has(> .forum-loading-state-page),
-  .calendar-admin-shell:has(> .forum-loading-state-page) {
-    padding-top: calc(var(--topbar-height) + 18px);
-  }
-
   @keyframes forum-loading-spin {
     to { transform: rotate(360deg); }
-  }
-
-  @media (max-width: 640px) {
-    .forum-loading-state-page {
-      min-height: 250px;
-      padding: var(--space-32) var(--space-18);
-    }
-
-    .forum-route-loading-shell {
-      width: calc(100% - 20px);
-      padding-top: calc(var(--topbar-height) + 10px);
-    }
-
-    .profile-page-shell:has(> .forum-loading-state-page),
-    .management-shell:has(> .forum-loading-state-page),
-    .calendar-admin-shell:has(> .forum-loading-state-page) {
-      padding-top: calc(var(--topbar-height) + 10px);
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
