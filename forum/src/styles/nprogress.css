@@ -13,3 +13,16 @@
 #nprogress .peg {
   box-shadow: 0 0 10px var(--nprogress-color), 0 0 5px var(--nprogress-color);
 }
+
+.forum-page-hold {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  overflow: hidden;
+  background: var(--page);
+}
+
+.forum-page-hold-content {
+  position: absolute;
+  width: 100%;
+}

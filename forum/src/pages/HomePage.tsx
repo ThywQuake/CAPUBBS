@@ -19,7 +19,8 @@ export function HomePage() {
   const {
     calendar, feed, feedHasMore, loadFullCalendarForDate, loadMore, pinned, refreshing, retry, signup,
   } = useHomeData(compactMode);
-  usePageProgress(refreshing);
+  // Cached content is already on screen, so this refresh does not hold navigation.
+  usePageProgress(refreshing, { background: true });
   const readThreadIds = useReadThreadIds(viewer?.username);
 
   return (

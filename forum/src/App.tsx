@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useReducer } from 'react';
+import { lazy, Suspense, useEffect, useReducer, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { BrowserRecommendationDialog } from './components/browser/BrowserRecommendationDialog';
 import { OfflineNotice } from './components/OfflineNotice';
@@ -17,6 +17,7 @@ import { consumeQueuedLocalDraftCleanups } from './utils/draftCleanup';
 import { stripForumBasePath } from './utils/forumBasePath';
 import { replaceAliasedForumLocation } from './utils/forumCanonicalRoute';
 import { applyForumContentFontSize } from './utils/forumFontSize';
+import { holdCurrentPage, releaseHeldPageWhenSettled } from './utils/pageHold';
 import {
   isBoardRoutePath,
   isHomeRoutePath,
@@ -140,11 +141,14 @@ function PendingDraftCleanup() {
 }
 
 function ForumRouter() {
-  const [, refreshLocation] = useReducer((revision: number) => revision + 1, 0);
+  const [revision, refreshLocation] = useReducer((current: number) => current + 1, 0);
+  const renderedPageRef = useRef(currentPageKey());
 
   useEffect(() => {
     const refresh = () => {
       replaceAliasedForumLocation(window.location, window.history);
+      // Moving to another page keeps the current one visible until the new one has loaded.
+      if (currentPageKey() !== renderedPageRef.current) holdCurrentPage();
       refreshLocation();
     };
     const navigateInsideForum = (event: MouseEvent) => {
@@ -202,6 +206,11 @@ function ForumRouter() {
       document.removeEventListener('click', navigateInsideForum);
     };
   }, []);
+
+  useEffect(() => {
+    renderedPageRef.current = currentPageKey();
+    releaseHeldPageWhenSettled();
+  }, [revision]);
 
   const pathname = normalizePathname(stripForumBasePath(window.location.pathname));
   const params = new URLSearchParams(window.location.search);
@@ -300,6 +309,11 @@ function ArchiveRoomRouteLoading() {
       </main>
     </div>
   );
+}
+
+// Floor jumps only change the hash and stay on the same page.
+function currentPageKey() {
+  return `${window.location.pathname}${window.location.search}`;
 }
 
 function isThreadComposePath(pathname: string) {
