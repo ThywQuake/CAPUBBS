@@ -43,7 +43,7 @@ function run(options = {}) {
   let resolveOutcome;
   const outcome = new Promise((resolve) => { resolveOutcome = resolve; });
   const element = (id) => ({
-    dataset: {}, textContent: '', setAttribute() {}, removeAttribute() {}, addEventListener() {}, remove() {},
+    dataset: {}, style: {}, textContent: '', setAttribute() {}, removeAttribute() {}, addEventListener() {}, remove() {},
     set value(value) { values.push(value); },
     set hidden(value) { if (id === 'forum-startup-retry' && !value) resolveOutcome('failed'); },
   });
@@ -53,7 +53,7 @@ function run(options = {}) {
   };
   if (options.cryptoGetter) Object.defineProperty(window, 'crypto', { get: options.cryptoGetter });
   const context = {
-    window, AbortController, sessionStorage: { getItem() {}, removeItem() {} }, localStorage: { getItem() {} },
+    window, AbortController, sessionStorage: { getItem() {}, removeItem() {} }, localStorage: { getItem: (key) => (options.cachedHome && key === 'capubbs-home-hot' ? '{}' : null) },
     document: {
       getElementById(id) { if (!elements.has(id)) elements.set(id, element(id)); return elements.get(id); },
       createElement: (tag) => ({ tag }), head: { appendChild(node) {
@@ -86,7 +86,7 @@ function run(options = {}) {
   };
   const runtime = options.config ? source.replace('__FORUM_STARTUP_CONFIG__', JSON.stringify(options.config)) : code;
   vm.runInNewContext(options.code || runtime, context);
-  return { outcome, window, values, requests, installed, idle };
+  return { outcome, window, values, requests, installed, idle, intervals, elements };
 }
 
 // Test the exact source fallback, including SHA-256 padding boundaries, without TextEncoder/Web Crypto.
@@ -168,4 +168,15 @@ finishDigest(await webcrypto.subtle.digest('SHA-256', payloads.get(legacy[0].url
 await new Promise((resolve) => setImmediate(resolve));
 assert.equal(pending.values.includes(100), false);
 assert.equal(pending.installed.length, 0);
+// A cached home hot list replaces the startup page with a top progress bar.
+const barState = run({ cachedHome: true, transform: (bytes, url) => crlfPayloads.get(url) || bytes });
+assert.equal(await barState.outcome, 'started');
+assert.equal(barState.elements.get('forum-startup').dataset.mode, 'bar');
+assert.equal(barState.intervals.size, 0, 'Bar mode does not rotate messages');
+assert.equal(barState.elements.get('forum-startup-bar').style.transform, 'scaleX(1)');
+barState.window.__forumStartup.ready();
+const barFailure = run({ cachedHome: true, transform: (bytes) => bytes.subarray(1) });
+assert.equal(await barFailure.outcome, 'failed');
+assert.equal(barFailure.elements.get('forum-startup').dataset.mode, undefined, 'Failures show the retry page');
+checks += 2;
 console.log(`PASS: ${checks} cache compatibility cases, shipped-asset allowlist, SHA-256 vectors, and late-digest timeout.`);

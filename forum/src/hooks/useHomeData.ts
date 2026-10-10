@@ -12,6 +12,7 @@ import {
   type HomeSignupActivity,
   type HomeThread,
 } from '../api/home';
+import { readHomeHotCache, writeHomeHotCache } from '../utils/homeHotCache';
 
 export type HomeDataStatus = 'error' | 'loading' | 'ready';
 
@@ -54,13 +55,23 @@ const initialSignup: SignupState = {
 const HOME_FEED_BATCH_SIZE = 15;
 const COMPACT_HOME_FEED_BATCH_SIZE = 30;
 
+function initialFeedLimit(compactMode: boolean) {
+  return compactMode ? COMPACT_HOME_FEED_BATCH_SIZE : HOME_FEED_BATCH_SIZE;
+}
+
 function calendarDateKey(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 export function useHomeData(compactMode = false) {
-  const [feed, setFeed] = useState<CollectionState>(initialCollection);
-  const [feedHasMore, setFeedHasMore] = useState(true);
+  // A cached snapshot from the last visit is shown at once while the current one loads.
+  const [initialCache] = useState(() => readHomeHotCache(compactMode));
+  const [feed, setFeed] = useState<CollectionState>(() => (initialCache
+    ? { error: '', items: initialCache.items.slice(0, initialFeedLimit(compactMode)), status: 'ready' }
+    : initialCollection));
+  const [feedHasMore, setFeedHasMore] = useState(() => !initialCache
+    || initialCache.items.length < initialCache.total);
+  const [feedRefreshing, setFeedRefreshing] = useState(false);
   const [feedLimit, setFeedLimit] = useState(HOME_FEED_BATCH_SIZE);
   const [compactFeedLimit, setCompactFeedLimit] = useState(COMPACT_HOME_FEED_BATCH_SIZE);
   const [pinned, setPinned] = useState<CollectionState>(initialCollection);
@@ -125,12 +136,25 @@ export function useHomeData(compactMode = false) {
       limit: activeFeedLimit,
       signal: controller.signal,
     };
+    const firstBatch = activeFeedLimit === initialFeedLimit(compactMode);
+    const cached = firstBatch && !feedSnapshotRef.current ? readHomeHotCache(compactMode) : null;
+    let shownGeneration = cached?.generation;
     const showPage = (page: HomeFeedPage) => {
       feedSnapshotRef.current = page.snapshot;
       setFeedHasMore(page.hasMore);
+      if (page.snapshot && firstBatch) writeHomeHotCache(compactMode, page.snapshot, activeFeedLimit);
+      // The cached list is already on screen; replace it only with a newer snapshot.
+      if (page.snapshot && page.snapshot.generation === shownGeneration) return;
+      shownGeneration = page.snapshot?.generation;
       setFeed({ error: '', items: page.items, status: 'ready' });
     };
-    setFeed((current) => ({ ...current, error: '', status: 'loading' }));
+    if (cached) {
+      setFeed({ error: '', items: cached.items.slice(0, activeFeedLimit), status: 'ready' });
+      setFeedHasMore(cached.items.length < cached.total);
+      setFeedRefreshing(true);
+    } else {
+      setFeed((current) => ({ ...current, error: '', status: 'loading' }));
+    }
 
     void fetchHomeFeedPage({ ...request, previous: feedSnapshotRef.current }).then(
       async (page) => {
@@ -144,7 +168,7 @@ export function useHomeData(compactMode = false) {
         }
       },
       (error: unknown) => {
-        if (!isAbortError(error)) {
+        if (!isAbortError(error) && !cached) {
           setFeed((current) => ({
             ...current,
             error: error instanceof Error ? error.message : '帖子加载失败，请稍后重试。',
@@ -152,9 +176,14 @@ export function useHomeData(compactMode = false) {
           }));
         }
       },
-    );
+    ).finally(() => {
+      if (!controller.signal.aborted) setFeedRefreshing(false);
+    });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      setFeedRefreshing(false);
+    };
   }, [activeFeedLimit, compactMode, requestVersion]);
 
   useEffect(() => {
@@ -225,5 +254,5 @@ export function useHomeData(compactMode = false) {
     return () => controller.abort();
   }, [requestVersion]);
 
-  return { calendar, feed, feedHasMore, loadFullCalendarForDate, loadMore, pinned, retry, signup };
+  return { calendar, feed, feedHasMore, feedRefreshing, loadFullCalendarForDate, loadMore, pinned, retry, signup };
 }

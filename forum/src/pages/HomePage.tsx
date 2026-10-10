@@ -8,6 +8,7 @@ import { useWaterfallFeedEnabled } from '../hooks/useAssistiveFeatures';
 import { useCompactMode } from '../hooks/useCompactMode';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useHomeData } from '../hooks/useHomeData';
+import { usePageProgress } from '../hooks/usePageProgress';
 import { useReadThreadIds } from '../hooks/useReadThreadIds';
 
 export function HomePage() {
@@ -15,7 +16,10 @@ export function HomePage() {
   const { viewer } = useAuth();
   const compactMode = useCompactMode();
   const waterfallFeedEnabled = useWaterfallFeedEnabled();
-  const { calendar, feed, feedHasMore, loadFullCalendarForDate, loadMore, pinned, retry, signup } = useHomeData(compactMode);
+  const {
+    calendar, feed, feedHasMore, feedRefreshing, loadFullCalendarForDate, loadMore, pinned, retry, signup,
+  } = useHomeData(compactMode);
+  usePageProgress(feedRefreshing);
   const readThreadIds = useReadThreadIds(viewer?.username);
 
   return (

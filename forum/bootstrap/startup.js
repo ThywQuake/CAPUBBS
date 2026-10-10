@@ -6,6 +6,7 @@
   var progress = document.getElementById('forum-startup-progress');
   var indeterminate = document.getElementById('forum-startup-indeterminate');
   var retry = document.getElementById('forum-startup-retry');
+  var bar = document.getElementById('forum-startup-bar');
   var finished = false;
   var failed = false;
   var timer;
@@ -37,6 +38,14 @@
     }
   } catch (_) { /* Storage restrictions must not prevent startup. */ }
   overlay.dataset.theme = theme;
+
+  // Returning visitors have a cached home hot list (src/utils/homeHotCache.ts);
+  // they only get a top progress bar while the cached assets load.
+  var barMode = false;
+  try {
+    barMode = !!(localStorage.getItem('capubbs-home-hot') || localStorage.getItem('capubbs-home-hot-compact'));
+  } catch (_) { /* Without storage the full startup page is shown. */ }
+  if (barMode) overlay.dataset.mode = 'bar';
 
   function shuffleMessages(lastMessage) {
     for (var i = messages.length - 1; i > 0; i--) {
@@ -76,6 +85,8 @@
     clearTimeout(timer);
     clearInterval(statusTimer);
     controller.abort();
+    // The retry button lives on the full startup page.
+    delete overlay.dataset.mode;
     status.textContent = '加载失败';
     indeterminate.hidden = true;
     overlay.setAttribute('aria-busy', 'false');
@@ -107,7 +118,7 @@
   touch();
   shuffleMessages();
   status.textContent = messages[messageIndex];
-  statusTimer = setInterval(rotateStatus, 1000);
+  if (!barMode) statusTimer = setInterval(rotateStatus, 1000);
 
   if (!config) {
     // Vite development serves source modules without a fixed byte manifest.
@@ -115,6 +126,7 @@
     progress.hidden = true;
     progress.removeAttribute('value');
     indeterminate.hidden = false;
+    if (barMode) bar.dataset.indeterminate = 'true';
     return;
   }
 
@@ -135,6 +147,7 @@
     var value = completed === assets.length ? 100 : Math.min(99, Math.floor(received * 100 / total));
     progress.value = value;
     percent.textContent = value + '%';
+    if (barMode) bar.style.transform = 'scaleX(' + Math.max(0.08, value / 100) + ')';
     touch();
   }
 

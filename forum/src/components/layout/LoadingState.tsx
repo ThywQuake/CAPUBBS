@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { beginPageProgress } from '../../utils/pageProgress';
+import { usePageProgress } from '../../hooks/usePageProgress';
 import { AppBackground } from './AppBackground';
 import { LoadingSpinner } from './LoadingSpinner';
 import { TopBar } from './TopBar';
@@ -29,7 +28,7 @@ export function LoadingState({ ariaLabel, className = '', id, label, variant = '
 
 // Full-page waits show the top progress bar instead of a centered spinner card.
 export function PageProgress({ ariaLabel, id, label }: { ariaLabel?: string; id?: string; label: string }) {
-  useEffect(() => beginPageProgress(), []);
+  usePageProgress(true);
 
   return (
     <span aria-label={ariaLabel} aria-live="polite" className="sr-only" id={id} role="status">{label}</span>
