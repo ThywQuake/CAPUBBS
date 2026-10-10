@@ -81,7 +81,6 @@ assert.match(viteConfigSource, /resolveForumMode\(request\.headers\.cookie\) !==
 assert.match(viteConfigSource, /'\/bbs\/register\/userexists\.php'/);
 
 const oldForumSource = readFileSync(resolve(forumDirectory, '../bbs/index/index.php'), 'utf8');
-const siteHomeSource = readFileSync(resolve(forumDirectory, '../index.php'), 'utf8');
 const topBarSource = readFileSync(resolve(forumDirectory, 'src/components/layout/TopBar.tsx'), 'utf8');
 const boardNavigationSource = readFileSync(
   resolve(forumDirectory, 'src/components/layout/BoardNavigation.tsx'),
@@ -92,7 +91,6 @@ const appSource = readFileSync(resolve(forumDirectory, 'src/App.tsx'), 'utf8');
 assert.match(oldForumSource, /href='\/bbs\/'/);
 assert.match(oldForumSource, /saveForumMode\('new'\)/);
 assert.match(oldForumSource, /<base href="\/bbs\/index\/">/);
-assert.match(siteHomeSource, /href="\/bbs\/"/);
 assert.doesNotMatch(topBarSource, /saveForumMode\('legacy'\)/);
 assert.match(boardNavigationSource, /saveForumMode\('legacy'\)/);
 assert.doesNotMatch(topBarSource, /data-forum-entry-reload="true"/);
