@@ -597,8 +597,8 @@
         $statement="select max(tid) from threads where bid=$bid";
         $tid=intval(mysqli_fetch_row(mysqli_query($con, $statement))[0])+1;
         $title=@$_REQUEST['title'];
-        if (mb_strlen($title,'utf-8')>=43)
-            $title=mb_substr($title,0,40,'utf-8')."...";
+        if (mb_strlen($title,'utf-8')>100)
+            $title=mb_substr($title,0,97,'utf-8')."...";
         $text=@$_REQUEST['text'];
         $type=mysqli_real_escape_string($con, @$_REQUEST['type']);
         $attachs=mysqli_real_escape_string($con, $attachs);

@@ -38,8 +38,8 @@ function jiekoufunc_post($con, $token, $bid, $ip, $attachs, $params) {
     $statement = "select max(tid) as m from (select tid from threads where bid=$bid union select tid from trash_threads where bid=$bid) as t";
     $tid = intval(mysqli_fetch_row(mysqli_query($con, $statement))[0]) + 1;
     $title = isset($params['title']) ? $params['title'] : '';
-    if (mb_strlen($title, 'utf-8') >= 43)
-        $title = mb_substr($title, 0, 40, 'utf-8') . "...";
+    if (mb_strlen($title, 'utf-8') > 100)
+        $title = mb_substr($title, 0, 97, 'utf-8') . "...";
     $text = isset($params['text']) ? $params['text'] : '';
     $type = isset($params['type']) ? mysqli_real_escape_string($con, $params['type']) : '';
     $attachs_esc = mysqli_real_escape_string($con, $attachs);
