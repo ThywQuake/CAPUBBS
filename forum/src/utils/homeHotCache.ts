@@ -1,4 +1,10 @@
-import type { HomeCalendarEvent, HomeFeedSnapshot, HomeThread } from '../api/home';
+import {
+  formatRelativeTime,
+  type HomeCalendarEvent,
+  type HomeFeedSnapshot,
+  type HomeSignupActivity,
+  type HomeThread,
+} from '../api/home';
 
 // bootstrap/startup.js reads these keys to skip the startup page for returning visitors.
 const HOME_HOT_CACHE_KEYS = {
@@ -27,7 +33,7 @@ export function readHomeHotCache(compactMode: boolean): HomeFeedSnapshot | null 
       expiresAt: typeof snapshot.expiresAt === 'number' ? snapshot.expiresAt : 0,
       fullUrl: snapshot.fullUrl,
       generation: snapshot.generation,
-      items: snapshot.items,
+      items: snapshot.items.map(withCurrentTimeLabel),
       total: snapshot.total,
     };
   } catch {
@@ -47,22 +53,38 @@ export function writeHomeHotCache(compactMode: boolean, snapshot: HomeFeedSnapsh
   }
 }
 
+// Relative times were formatted when the list was saved.
+function withCurrentTimeLabel(thread: HomeThread): HomeThread {
+  return { ...thread, timeLabel: formatRelativeTime(thread.timestamp) };
+}
+
 function isHomeThread(value: unknown): value is HomeThread {
   if (!value || typeof value !== 'object') return false;
   const thread = value as Record<string, unknown>;
-  return typeof thread.id === 'string' && typeof thread.href === 'string' && typeof thread.title === 'string';
+  return typeof thread.id === 'string' && typeof thread.href === 'string' && typeof thread.title === 'string'
+    && typeof thread.timestamp === 'string';
 }
 
 const HOME_PINNED_CACHE_KEY = 'capubbs-home-pinned';
 const HOME_CALENDAR_CACHE_KEY = 'capubbs-home-calendar';
+const HOME_SIGNUP_CACHE_KEY = 'capubbs-home-signup';
 
 export function readHomePinnedCache(): HomeThread[] | null {
   const items = readJson(HOME_PINNED_CACHE_KEY);
-  return Array.isArray(items) && items.every(isHomeThread) ? items : null;
+  return Array.isArray(items) && items.every(isHomeThread) ? items.map(withCurrentTimeLabel) : null;
 }
 
 export function writeHomePinnedCache(items: HomeThread[]) {
   writeJson(HOME_PINNED_CACHE_KEY, items);
+}
+
+export function readHomeSignupCache(): HomeSignupActivity[] | null {
+  const items = readJson(HOME_SIGNUP_CACHE_KEY);
+  return Array.isArray(items) && items.every(isSignupActivity) ? items : null;
+}
+
+export function writeHomeSignupCache(items: HomeSignupActivity[]) {
+  writeJson(HOME_SIGNUP_CACHE_KEY, items);
 }
 
 // The calendar cache belongs to one date range; a new year starts without it.
@@ -97,4 +119,10 @@ function isCalendarEvent(value: unknown): value is HomeCalendarEvent {
   if (!value || typeof value !== 'object') return false;
   const event = value as Record<string, unknown>;
   return typeof event.id === 'string' && typeof event.date === 'string' && typeof event.title === 'string';
+}
+
+function isSignupActivity(value: unknown): value is HomeSignupActivity {
+  if (!value || typeof value !== 'object') return false;
+  const activity = value as Record<string, unknown>;
+  return typeof activity.id === 'string' && typeof activity.href === 'string' && typeof activity.title === 'string';
 }

@@ -16,9 +16,11 @@ import {
   readHomeCalendarCache,
   readHomeHotCache,
   readHomePinnedCache,
+  readHomeSignupCache,
   writeHomeCalendarCache,
   writeHomeHotCache,
   writeHomePinnedCache,
+  writeHomeSignupCache,
 } from '../utils/homeHotCache';
 
 export type HomeDataStatus = 'error' | 'loading' | 'ready';
@@ -66,8 +68,13 @@ function initialFeedLimit(compactMode: boolean) {
   return compactMode ? COMPACT_HOME_FEED_BATCH_SIZE : HOME_FEED_BATCH_SIZE;
 }
 
-function sameItems(current: unknown[], next: unknown[]) {
-  return JSON.stringify(current) === JSON.stringify(next);
+// Keep what is on screen unless the items changed, so a matching refresh does not re-render.
+function showItems<T>(items: T[]) {
+  return <S extends { error: string; items: T[]; status: HomeDataStatus }>(current: S): S => (
+    current.status === 'ready' && JSON.stringify(current.items) === JSON.stringify(items)
+      ? current
+      : { ...current, error: '', items, status: 'ready' }
+  );
 }
 
 function calendarDateKey(year: number, month: number, day: number) {
@@ -90,7 +97,11 @@ export function useHomeData(compactMode = false) {
     return items ? { error: '', items, status: 'ready' } : initialCollection;
   });
   const [pinnedRefreshing, setPinnedRefreshing] = useState(false);
-  const [signup, setSignup] = useState<SignupState>(initialSignup);
+  const [signup, setSignup] = useState<SignupState>(() => {
+    const items = readHomeSignupCache();
+    return items ? { error: '', items, status: 'ready' } : initialSignup;
+  });
+  const [signupRefreshing, setSignupRefreshing] = useState(false);
   const [requestVersion, setRequestVersion] = useState(0);
   const feedSnapshotRef = useRef<HomeFeedSnapshot | null>(null);
   const [calendarRange] = useState(() => {
@@ -210,9 +221,7 @@ export function useHomeData(compactMode = false) {
     const controller = new AbortController();
     const cached = readHomePinnedCache();
     if (cached) {
-      setPinned((current) => (sameItems(current.items, cached) && current.status === 'ready'
-        ? current
-        : { error: '', items: cached, status: 'ready' }));
+      setPinned(showItems(cached));
       setPinnedRefreshing(true);
     } else {
       setPinned((current) => ({ ...current, error: '', status: 'loading' }));
@@ -221,10 +230,7 @@ export function useHomeData(compactMode = false) {
     void fetchGlobalPinnedThreads(controller.signal).then(
       (items) => {
         writeHomePinnedCache(items);
-        // Keep the cached list on screen unless something changed.
-        setPinned((current) => (sameItems(current.items, items) && current.status === 'ready'
-          ? current
-          : { error: '', items, status: 'ready' }));
+        setPinned(showItems(items));
       },
       (error: unknown) => {
         if (!isAbortError(error) && !cached) {
@@ -250,9 +256,7 @@ export function useHomeData(compactMode = false) {
     calendarFullRequestedRef.current = false;
     const cached = readHomeCalendarCache(calendarRangeKey);
     if (cached) {
-      setCalendar((current) => (sameItems(current.items, cached) && current.status === 'ready'
-        ? current
-        : { error: '', items: cached, status: 'ready' }));
+      setCalendar(showItems(cached));
       setCalendarRefreshing(true);
     } else {
       setCalendar((current) => ({ ...current, error: '', status: 'loading' }));
@@ -265,10 +269,7 @@ export function useHomeData(compactMode = false) {
       (items) => {
         writeHomeCalendarCache(calendarRangeKey, items);
         if (calendarFullRequestedRef.current) return;
-        // Keep the cached events on screen unless something changed.
-        setCalendar((current) => (sameItems(current.items, items) && current.status === 'ready'
-          ? current
-          : { error: '', items, status: 'ready' }));
+        setCalendar(showItems(items));
       },
       (error: unknown) => {
         if (!isAbortError(error) && !cached) {
@@ -291,12 +292,21 @@ export function useHomeData(compactMode = false) {
 
   useEffect(() => {
     const controller = new AbortController();
-    setSignup((current) => ({ ...current, error: '', status: 'loading' }));
+    const cached = readHomeSignupCache();
+    if (cached) {
+      setSignup(showItems(cached));
+      setSignupRefreshing(true);
+    } else {
+      setSignup((current) => ({ ...current, error: '', status: 'loading' }));
+    }
 
     void fetchHomeSignupActivities(5, controller.signal).then(
-      (items) => setSignup({ error: '', items, status: 'ready' }),
+      (items) => {
+        writeHomeSignupCache(items);
+        setSignup(showItems(items));
+      },
       (error: unknown) => {
-        if (!isAbortError(error)) {
+        if (!isAbortError(error) && !cached) {
           setSignup((current) => ({
             ...current,
             error: error instanceof Error ? error.message : '活动报名加载失败，请稍后重试。',
@@ -304,12 +314,17 @@ export function useHomeData(compactMode = false) {
           }));
         }
       },
-    );
+    ).finally(() => {
+      if (!controller.signal.aborted) setSignupRefreshing(false);
+    });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      setSignupRefreshing(false);
+    };
   }, [requestVersion]);
 
-    const refreshing = feedRefreshing || pinnedRefreshing || calendarRefreshing;
+  const refreshing = feedRefreshing || pinnedRefreshing || calendarRefreshing || signupRefreshing;
 
   return { calendar, feed, feedHasMore, loadFullCalendarForDate, loadMore, pinned, refreshing, retry, signup };
 }

@@ -22,6 +22,7 @@
     "verify:gallery-grouping": "node --experimental-strip-types verify-gallery-grouping.mjs",
     "verify:gallery-files": "node --experimental-strip-types verify-gallery-files.mjs",
     "verify:home-hot-snapshot": "node --experimental-strip-types verify-home-hot-snapshot.mjs",
+    "verify:home-cache": "node verify-home-cache.mjs",
     "verify:image-preloading": "node --experimental-strip-types verify-image-preloading.mjs",
     "verify:gallery-image-loading": "node --experimental-strip-types verify-gallery-image-loading.mjs",
     "verify:legacy-assets": "node --experimental-strip-types verify-legacy-assets.mjs",

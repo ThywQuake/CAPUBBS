@@ -563,7 +563,7 @@ function toTimestamp(value: unknown) {
   return '';
 }
 
-function formatRelativeTime(timestamp: string) {
+export function formatRelativeTime(timestamp: string) {
   if (!timestamp) return '时间未知';
 
   const date = new Date(timestamp);
