@@ -43,7 +43,7 @@ const signatureOptions = [
 
 export function PostEditorTitleField({
   label = '帖子标题',
-  maxLength = 40,
+  maxLength = 100,
   onChange,
   placeholder = '请输入帖子标题',
   required = false,
