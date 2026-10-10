@@ -17,9 +17,9 @@ export function HomePage() {
   const compactMode = useCompactMode();
   const waterfallFeedEnabled = useWaterfallFeedEnabled();
   const {
-    calendar, feed, feedHasMore, feedRefreshing, loadFullCalendarForDate, loadMore, pinned, retry, signup,
+    calendar, feed, feedHasMore, loadFullCalendarForDate, loadMore, pinned, refreshing, retry, signup,
   } = useHomeData(compactMode);
-  usePageProgress(feedRefreshing);
+  usePageProgress(refreshing);
   const readThreadIds = useReadThreadIds(viewer?.username);
 
   return (

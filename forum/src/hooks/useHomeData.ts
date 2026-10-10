@@ -12,7 +12,14 @@ import {
   type HomeSignupActivity,
   type HomeThread,
 } from '../api/home';
-import { readHomeHotCache, writeHomeHotCache } from '../utils/homeHotCache';
+import {
+  readHomeCalendarCache,
+  readHomeHotCache,
+  readHomePinnedCache,
+  writeHomeCalendarCache,
+  writeHomeHotCache,
+  writeHomePinnedCache,
+} from '../utils/homeHotCache';
 
 export type HomeDataStatus = 'error' | 'loading' | 'ready';
 
@@ -59,6 +66,10 @@ function initialFeedLimit(compactMode: boolean) {
   return compactMode ? COMPACT_HOME_FEED_BATCH_SIZE : HOME_FEED_BATCH_SIZE;
 }
 
+function sameItems(current: unknown[], next: unknown[]) {
+  return JSON.stringify(current) === JSON.stringify(next);
+}
+
 function calendarDateKey(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
@@ -74,8 +85,11 @@ export function useHomeData(compactMode = false) {
   const [feedRefreshing, setFeedRefreshing] = useState(false);
   const [feedLimit, setFeedLimit] = useState(HOME_FEED_BATCH_SIZE);
   const [compactFeedLimit, setCompactFeedLimit] = useState(COMPACT_HOME_FEED_BATCH_SIZE);
-  const [pinned, setPinned] = useState<CollectionState>(initialCollection);
-  const [calendar, setCalendar] = useState<CalendarState>(initialCalendar);
+  const [pinned, setPinned] = useState<CollectionState>(() => {
+    const items = readHomePinnedCache();
+    return items ? { error: '', items, status: 'ready' } : initialCollection;
+  });
+  const [pinnedRefreshing, setPinnedRefreshing] = useState(false);
   const [signup, setSignup] = useState<SignupState>(initialSignup);
   const [requestVersion, setRequestVersion] = useState(0);
   const feedSnapshotRef = useRef<HomeFeedSnapshot | null>(null);
@@ -86,6 +100,12 @@ export function useHomeData(compactMode = false) {
       start: calendarDateKey(currentYear - 1, 1, 1),
     };
   });
+  const calendarRangeKey = `${calendarRange.start}/${calendarRange.end}`;
+  const [calendar, setCalendar] = useState<CalendarState>(() => {
+    const items = readHomeCalendarCache(calendarRangeKey);
+    return items ? { error: '', items, status: 'ready' } : initialCalendar;
+  });
+  const [calendarRefreshing, setCalendarRefreshing] = useState(false);
   const calendarFullRequestedRef = useRef(false);
   const activeFeedLimit = compactMode ? compactFeedLimit : feedLimit;
 
@@ -188,14 +208,26 @@ export function useHomeData(compactMode = false) {
 
   useEffect(() => {
     const controller = new AbortController();
-    setPinned((current) => ({ ...current, error: '', status: 'loading' }));
+    const cached = readHomePinnedCache();
+    if (cached) {
+      setPinned((current) => (sameItems(current.items, cached) && current.status === 'ready'
+        ? current
+        : { error: '', items: cached, status: 'ready' }));
+      setPinnedRefreshing(true);
+    } else {
+      setPinned((current) => ({ ...current, error: '', status: 'loading' }));
+    }
 
     void fetchGlobalPinnedThreads(controller.signal).then(
       (items) => {
-        setPinned({ error: '', items, status: 'ready' });
+        writeHomePinnedCache(items);
+        // Keep the cached list on screen unless something changed.
+        setPinned((current) => (sameItems(current.items, items) && current.status === 'ready'
+          ? current
+          : { error: '', items, status: 'ready' }));
       },
       (error: unknown) => {
-        if (!isAbortError(error)) {
+        if (!isAbortError(error) && !cached) {
           setPinned((current) => ({
             ...current,
             error: error instanceof Error ? error.message : '置顶内容加载失败，请稍后重试。',
@@ -203,25 +235,43 @@ export function useHomeData(compactMode = false) {
           }));
         }
       },
-    );
+    ).finally(() => {
+      if (!controller.signal.aborted) setPinnedRefreshing(false);
+    });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      setPinnedRefreshing(false);
+    };
   }, [requestVersion]);
 
   useEffect(() => {
     const controller = new AbortController();
     calendarFullRequestedRef.current = false;
-    setCalendar((current) => ({ ...current, error: '', status: 'loading' }));
+    const cached = readHomeCalendarCache(calendarRangeKey);
+    if (cached) {
+      setCalendar((current) => (sameItems(current.items, cached) && current.status === 'ready'
+        ? current
+        : { error: '', items: cached, status: 'ready' }));
+      setCalendarRefreshing(true);
+    } else {
+      setCalendar((current) => ({ ...current, error: '', status: 'loading' }));
+    }
 
     void fetchHomeCalendar(controller.signal, {
       endDate: calendarRange.end,
       startDate: calendarRange.start,
     }).then(
       (items) => {
-        if (!calendarFullRequestedRef.current) setCalendar({ error: '', items, status: 'ready' });
+        writeHomeCalendarCache(calendarRangeKey, items);
+        if (calendarFullRequestedRef.current) return;
+        // Keep the cached events on screen unless something changed.
+        setCalendar((current) => (sameItems(current.items, items) && current.status === 'ready'
+          ? current
+          : { error: '', items, status: 'ready' }));
       },
       (error: unknown) => {
-        if (!isAbortError(error)) {
+        if (!isAbortError(error) && !cached) {
           setCalendar((current) => ({
             ...current,
             error: error instanceof Error ? error.message : '日历加载失败，请稍后重试。',
@@ -229,10 +279,15 @@ export function useHomeData(compactMode = false) {
           }));
         }
       },
-    );
+    ).finally(() => {
+      if (!controller.signal.aborted) setCalendarRefreshing(false);
+    });
 
-    return () => controller.abort();
-  }, [calendarRange, requestVersion]);
+    return () => {
+      controller.abort();
+      setCalendarRefreshing(false);
+    };
+  }, [calendarRange, calendarRangeKey, requestVersion]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -254,5 +309,7 @@ export function useHomeData(compactMode = false) {
     return () => controller.abort();
   }, [requestVersion]);
 
-  return { calendar, feed, feedHasMore, feedRefreshing, loadFullCalendarForDate, loadMore, pinned, retry, signup };
+    const refreshing = feedRefreshing || pinnedRefreshing || calendarRefreshing;
+
+  return { calendar, feed, feedHasMore, loadFullCalendarForDate, loadMore, pinned, refreshing, retry, signup };
 }
