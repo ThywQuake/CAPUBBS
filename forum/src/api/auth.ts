@@ -324,8 +324,13 @@ function clearTokenCookie() {
   const secure = window.location.protocol === 'https:' ? '; Secure' : '';
   expireTokenCookie('', secure);
 
+  // Legacy login pages set `domain=.<CAPUBBS_HOST>`, which survives the host-only
+  // and shared-domain deletions on hosts outside chexie.net.
+  const hostname = window.location.hostname.toLowerCase();
+  if (hostname.includes('.')) expireTokenCookie(hostname, secure);
+
   const domain = sharedCookieDomain();
-  if (domain) expireTokenCookie(domain, secure);
+  if (domain && domain !== hostname) expireTokenCookie(domain, secure);
 }
 
 function expireTokenCookie(domain: string, secure: string) {
