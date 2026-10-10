@@ -102,8 +102,8 @@ function createActivity($username, $bid, $title, $text, $options, $sig, $attachs
         $statement="select max(tid) from threads where bid=$bid";
         $result = activity_service_query_or_throw($con, $statement);
         $tid=intval(mysqli_fetch_row($result)[0])+1;
-        if (mb_strlen($title,'utf-8')>=43)
-            $title=mb_substr($title,0,40,'utf-8')."...";
+        if (mb_strlen($title,'utf-8')>100)
+            $title=mb_substr($title,0,97,'utf-8')."...";
         $type='web';
         $posttime=date('Y-m-d');
         $title=html_entity_decode($title);
