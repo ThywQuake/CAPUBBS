@@ -1,6 +1,7 @@
 import { Dices } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { fetchRandomThread } from '../../api/randomThread';
+import { pushForumLocation } from '../../utils/authRoutes';
 import { toForumHref } from '../../utils/forumBasePath';
 import { ForumToast } from '../ForumToast';
 import { LoadingSpinner as LoaderCircle } from './LoadingSpinner';
@@ -28,7 +29,9 @@ export function RandomThreadButton({
     try {
       const { bid, tid } = await fetchRandomThread();
       onNavigate?.();
-      window.location.assign(toForumHref(`/?bid=${bid}&tid=${tid}&p=1&random=1`));
+      // Navigate inside the app; a full reload would cover the screen with the startup page.
+      pushForumLocation(toForumHref(`/?bid=${bid}&tid=${tid}&p=1&random=1`));
+      window.scrollTo({ left: 0, top: 0 });
     } catch (error) {
       setError(error instanceof Error ? error.message : '随机帖子加载失败，请再试一次');
     } finally {

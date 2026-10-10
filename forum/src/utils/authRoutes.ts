@@ -24,6 +24,11 @@ export function getAuthReturnTo(search: string) {
   return getSafeReturnTo(new URLSearchParams(search).get('returnTo'));
 }
 
+export function pushForumLocation(href: string) {
+  window.history.pushState(null, '', getSafeReturnTo(href));
+  window.dispatchEvent(new Event(FORUM_LOCATION_CHANGE_EVENT));
+}
+
 export function replaceForumLocation(href: string) {
   window.history.replaceState(null, '', getSafeReturnTo(href));
   window.dispatchEvent(new Event(FORUM_LOCATION_CHANGE_EVENT));
