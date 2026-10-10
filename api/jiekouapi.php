@@ -594,7 +594,7 @@
         $lastpost=intval($res[3]);
         checkDelayTime($time, $star, $rights, $lastpost, $ip, $results);
         echo '<capu>';
-        $statement="select max(tid) from threads where bid=$bid";
+        $statement="select max(tid) as m from (select tid from threads where bid=$bid union select tid from trash_threads where bid=$bid) as t";
         $tid=intval(mysqli_fetch_row(mysqli_query($con, $statement))[0])+1;
         $title=@$_REQUEST['title'];
         if (mb_strlen($title,'utf-8')>100)
@@ -1025,7 +1025,7 @@
         if ($to <= 0) {echo '<capu><info><code>15</code><msg>目标版块不存在。</msg></info></capu>';exit;}
         $a=getrights($con,$bid,$token);
         if ($a[0]!=2) {echo '<capu><info><code>5</code><msg>权限不足！</msg></info></capu>';exit;}
-        $statement="select max(tid) from threads where bid=$to";
+        $statement="select max(tid) as m from (select tid from threads where bid=$to union select tid from trash_threads where bid=$to) as t";
         $totid=intval(mysqli_fetch_row(mysqli_query($con, $statement))[0])+1;
         $statement="select tid from threads where bid=$bid && tid=$tid";
         $results=mysqli_query($con, $statement);
